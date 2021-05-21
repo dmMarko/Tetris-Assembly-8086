@@ -1,15 +1,21 @@
+
 proc generate_last_7_queue
+	; the official tetris random generator mechanism 
+	; needs to load the queue every time with all of the 7 tetreminos
+	; in a random order
+	; this procedure does it
 	mov bx, offset queue
 	mov si, 14
 	mov cx, 7
-	reset_last_7_loop:
+
+	reset_last_7_loop: ; 100 is not an avaliable spot, so 
 		mov [bx+si], 100
 		add si, 2
 		loop reset_last_7_loop
 
 	mov cx, 7
 	generate_last_7_loop:
-		mov [top_limit], cx
+		mov [top_limit], cx ; generate a random location on the list
 		call randomnum
 		mov dl, [rand_num]
 		mov dh, 0
@@ -18,9 +24,9 @@ proc generate_last_7_queue
 		mov bx, offset used_spots
 		push cx
 		mov cx, 7
-		check_if_spot_valid:
-			cmp [bx+si], dx
-			je if_spot_isnt_valid
+		check_if_spot_valid: ; check if the spot wasn't already taken 
+			cmp [bx+si], dx 
+			je if_spot_isnt_valid ; if the spot is already used
 			add si, 2
 			loop check_if_spot_valid
 		
@@ -43,8 +49,6 @@ proc generate_last_7_queue
 		mov si, dl
 		add si, dl
 		add si, 14
-
-		mov
 
 		loop generate_last_7_loop
 	ret

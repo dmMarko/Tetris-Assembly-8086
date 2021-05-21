@@ -54,24 +54,27 @@ held_this_turn db 0 ; boolean, 0 = didn't hold a piece this turn, 1 = held alrea
 
 queue dw 14 dup (?)
 
-x_column db 0
-y_row db 0
+min_queue_last_7 db 14 ; when calculating the las 7 spots in the queue, when the first spot is taken, 
+					   ; the first is now moved to the second spot
+					   ; in order to not try again to use the first one
 
-character db '2'
-char_colour db 2
-score db 8 dup(0)
+queue_iteration db 0
+
+;x_column db 0
+;y_row db 0
+
+;character db '2'
+;char_colour db 2
+;score db 8 dup(0)
 
 ; -------- rand variables ---------
 modulus dw 6075
 multiplier dw 106
 increment dw 1283
-seed dw ?
+seed dw ? ; the seed, the random number
 
-top_limit dw 7
+top_limit dw 7 ; the limit of the random number
 rand_num db ?
-
-used_spots dw 100 dup(0)
-pieces dw 0,1,2,3,4,5,6
 
 CODESEG
 ; ________BMP reader________
@@ -232,24 +235,24 @@ proc delay
 	ret
 endp delay
 
-proc Cursor_Location ;Place the cursor on the screen by player/level cords
-	mov bh, 0
-	mov dh, [y_row] ; in row
-	mov dl, [x_column]
-	mov ah, 2
-	int 10h
-	ret
-	endp Cursor_Location
-
-proc Draw_Char ;print text in dx
-	mov ah, 9
-	mov al, [character] ;AL = character to display
-	mov bh, 0h ;BH=Page
-	mov bl, [char_colour] ; BL = Foreground
-	mov cx, 1 ; number of times to write character
-	int 10h ; Bois -&gt; show the character
-	ret
-	endp Draw_Char
+;proc Cursor_Location ;Place the cursor on the screen by player/level cords
+;	mov bh, 0
+;	mov dh, [y_row] ; in row
+;	mov dl, [x_column]
+;	mov ah, 2
+;	int 10h
+;	ret
+;	endp Cursor_Location
+;
+;proc Draw_Char ;print text in dx
+;	mov ah, 9
+;	mov al, [character] ;AL = character to display
+;	mov bh, 0h ;BH=Page
+;	mov bl, [char_colour] ; BL = Foreground
+;	mov cx, 1 ; number of times to write character
+;	int 10h ; Bois -&gt; show the character
+;	ret
+;	endp Draw_Char
 
 ; _________graphics_________
 proc drawSquare
@@ -1874,7 +1877,65 @@ proc randomNum
 	ret
 endp randomNum
 
+proc generate_last_7_queue
+	; an official tetris random generator mechanism 
+	; needs to load the queue every time with all of the 7 tetreminos
+	; in a random order
+	; this procedure does it
+	mov [min_queue_last_7], 14
+	mov bx, offset queue
+	mov si, 14
+	mov cx, 7
 
+	reset_last_7_loop: ; 100 is not an avaliable piece, so setting every spot we
+					   ; want to change to 100 will let us know which spot we
+					   ; already changed
+		mov [bx+si], 100
+		add si, 2
+		loop reset_last_7_loop
+
+	mov ax, 0
+	mov cx, 7
+	generate_last_7_loop:
+		mov [top_limit], cx ; generate a random location on the list
+		call randomnum
+		mov dl, [rand_num]
+		add dl, [rand_num] 
+		add dl, [min_queue_last_7]; the piece is a word, so si is doubled
+		mov dh, 0 ; now dx holds the position the position it wants to put a piece in
+
+		mov si, dx
+		check_if_spot_valid: ; check if the spot wasn't already taken 
+			cmp [bx+si], 6
+			ja generate_last_7_set ; when the spot is valid, continue
+
+		; if spot isnt valid:
+			add si, 2 ; try the one bove
+			cmp si, 28
+			jb check_if_spot_valid ; if dx is still in range 14-27 check again
+			mov dl, [min_queue_last_7] ; if it isn't start from the beginnig
+			mov dh, 0
+			jmp check_if_spot_valid
+
+		generate_last_7_set:
+		
+		mov [bx+si], ax
+		inc ax
+
+		cmp [rand_num], 0
+		je generate_last_7_chane_min
+
+		loop generate_last_7_loop
+
+		ret
+
+		generate_last_7_chane_min:
+			add [min_queue_last_7], 2
+			
+			loop generate_last_7_loop
+
+	ret
+endp generate_last_7_queue
 
 ; movment
 proc rotate_left
@@ -6210,14 +6271,14 @@ proc black_held_piece_thumbnail
 			ret
 endp black_held_piece_thumbnail
 
-proc draw_score
-	push [x_coordinate]
-	push [y_coordinate]
-
-	pop [y_coordinate]
-	pop [x_coordinate]
-	ret
-endp draw_score
+;proc draw_score
+;	push [x_coordinate]
+;	push [y_coordinate]
+;
+;	pop [y_coordinate]
+;	pop [x_coordinate]
+;	ret
+;endp draw_score
 
 start:
 mov ax, @data
@@ -6229,19 +6290,28 @@ mov ds, ax
 
 	; initialize queue
 
-	mov si, 0
-	mov cx, 5
-initialize_queue_loop:
-	push cx
-	mov [top_limit], 7
-	call randomnum
-	mov al, [rand_num]
-	mov ah, 0
+	call generate_last_7_queue
+
 	mov bx, offset queue
-	mov [bx+si], ax
-	add si, 2
-	pop cx
-	loop initialize_queue_loop
+	mov cx, 7
+	initial_move_queue_7_spots:
+		push cx
+
+		mov si, 2
+		mov cx, 13
+		initial_move_queue_loop:
+			push [bx+si]
+			sub si, 2
+			pop [bx+si]
+			add si, 4
+			loop initial_move_queue_loop
+		
+		pop cx
+		loop initial_move_queue_7_spots
+
+	call generate_last_7_queue
+
+	mov [queue_iteration], 0
 
 ; Process BMP file
 
@@ -6256,11 +6326,11 @@ mov [filename], cx
 
     call waitforkeypress
 
-	mov ax, [square_size]
-	mov [character], al
-	add [character], '0'
-	call cursor_location
-	call draw_char
+	;mov ax, [square_size]
+	;mov [character], al
+	;add [character], '0'
+	;call cursor_location
+	;call draw_char
 
     call waitforkeypress
 
@@ -6311,7 +6381,7 @@ mainGameLoop:
 			push [bx+si]
 			pop [current_piece]
 			mov si, 2
-			mov cx, 4
+			mov cx, 13
 		move_queue_loop:
 			push [bx+si]
 			sub si, 2
@@ -6319,16 +6389,16 @@ mainGameLoop:
 			add si, 4
 			loop move_queue_loop
 
-		;generate new last piece
-			mov [top_limit], 7
-			call randomnum
-			mov al, [rand_num]
-			mov ah, 0
-			mov [bx+8], ax
-
-			call draw_queue_thumblnails
+			inc [queue_iteration]
+			cmp [queue_iteration], 7
+			jb reset_vars
+			
+			call generate_last_7_queue
+			mov [queue_iteration], 0
 
 	reset_vars:
+		call draw_queue_thumblnails
+
 		mov [y_coordinate], 17 ; reset variables
 		mov [x_coordinate], 144
 		mov [move_down_failed], 0
