@@ -60,12 +60,13 @@ min_queue_last_7 db 14 ; when calculating the las 7 spots in the queue, when the
 
 queue_iteration db 0
 
-;x_column db 0
-;y_row db 0
+x_column db 3
+y_row db 15
+character db '2'
+char_colour db 2
 
-;character db '2'
-;char_colour db 2
-;score db 8 dup(0)
+score db 10 dup(0), "$"
+lines_cleared db 0
 
 ; -------- rand variables ---------
 modulus dw 6075
@@ -94,6 +95,7 @@ proc OpenFile
     int 21h
     ret
 endp OpenFile
+
 proc ReadHeader
     ; Read BMP file header, 54 bytes
     mov ah,3fh
@@ -235,25 +237,37 @@ proc delay
 	ret
 endp delay
 
-;proc Cursor_Location ;Place the cursor on the screen by player/level cords
-;	mov bh, 0
-;	mov dh, [y_row] ; in row
-;	mov dl, [x_column]
-;	mov ah, 2
-;	int 10h
-;	ret
-;	endp Cursor_Location
-;
-;proc Draw_Char ;print text in dx
-;	mov ah, 9
-;	mov al, [character] ;AL = character to display
-;	mov bh, 0h ;BH=Page
-;	mov bl, [char_colour] ; BL = Foreground
-;	mov cx, 1 ; number of times to write character
-;	int 10h ; Bois -&gt; show the character
-;	ret
-;	endp Draw_Char
+proc Cursor_Location ;Place the cursor on the screen by player/level cords
+	pusha
+	mov bh, 0
+	mov dh, [y_row] ; in row
+	mov dl, [x_column]
+	mov ah, 2
+	int 10h
+	popa
+	ret
+endp Cursor_Location
 
+proc Draw_Char
+	pusha
+	mov ah, 9
+	mov al, [character] ;AL = character to display
+	mov bh, 0h ;BH=Page
+	mov bl, [char_colour] ; BL = Foreground
+	mov cx, 1 ; number of times to write character
+	int 10h ; Bois -&gt; show the character
+	popa
+	ret
+endp Draw_Char
+
+proc Print_Text ;print text in dx
+	pusha
+	mov ah, 9h
+	int 21h
+	popa
+	ret
+	endp Print_Text
+	
 ; _________graphics_________
 proc drawSquare
 		push cx
@@ -6271,14 +6285,91 @@ proc black_held_piece_thumbnail
 			ret
 endp black_held_piece_thumbnail
 
-;proc draw_score
-;	push [x_coordinate]
-;	push [y_coordinate]
-;
-;	pop [y_coordinate]
-;	pop [x_coordinate]
-;	ret
-;endp draw_score
+proc draw_score
+	pusha
+	mov bx, offset score
+	mov dx, offset score
+	mov si, 0
+	mov cx, 10
+	draw_score_add_loop:
+		add [bx+si], '0'
+		inc si
+		loop draw_score_add_loop
+
+	call print_text
+
+	mov si, 0
+	mov cx, 10
+	draw_score_sub_loop:
+		sub [bx+si], '0'
+		inc si
+		loop draw_score_sub_loop
+	popa
+	ret
+endp draw_score
+
+proc inc_score_first_digit
+	pusha
+	mov bx, offset score
+	mov si, 9
+	mov cx, 9
+	inc_digit_1:
+		inc [bx+si]
+		mov dl, 9
+		cmp [bx+si], dl
+		ja digit_overflow_1
+		popa
+		ret
+	digit_overflow_1:
+		mov dl, 0
+		mov [bx+si], dl
+		dec si
+		loop inc_digit_1
+	popa
+	ret
+endp inc_score_first_digit
+
+proc inc_score_second_digit
+	pusha
+	mov bx, offset score
+	mov si, 8
+	mov cx, 8
+	inc_digit_2:
+		inc [bx+si]
+		mov dl, 9
+		cmp [bx+si], dl
+		ja digit_overflow_2
+		popa
+		ret
+	digit_overflow_2:
+		mov dl, 0
+		mov [bx+si], dl
+		dec si
+		loop inc_digit_2
+	popa
+	ret
+endp inc_score_second_digit
+
+proc inc_score_third_digit
+	pusha
+	mov bx, offset score
+	mov si, 7
+	mov cx, 7
+	inc_digit_3:
+		inc [bx+si]
+		mov dl, 9
+		cmp [bx+si], dl
+		ja digit_overflow_3
+		popa
+		ret
+	digit_overflow_3:
+		mov dl, 0
+		mov [bx+si], dl
+		dec si
+		loop inc_digit_3
+	popa
+	ret
+endp inc_score_third_digit
 
 start:
 mov ax, @data
@@ -6326,16 +6417,15 @@ mov [filename], cx
 
     call waitforkeypress
 
-	;mov ax, [square_size]
-	;mov [character], al
-	;add [character], '0'
-	;call cursor_location
-	;call draw_char
+	call cursor_location
+	call draw_score
 
-    call waitforkeypress
+	call waitforkeypress
 
 mainGameLoop:
+		; reset hard variables (so mechanisms like hold won't reset them)
 		mov [held_this_turn], 0
+		mov [lines_cleared], 0
 
 		; this code segment checks each row and if every square in it isn't empty (not black) if it is, this segment empties the row
 		mov [x_coordinate], 120
@@ -6367,11 +6457,69 @@ mainGameLoop:
 			push [line]
 			mov [x_coordinate], 120 ; reset x coord
 			call move_down_lines
+			inc [lines_cleared]
 		finished_clearing_row_mechanism:
 			mov [x_coordinate], 120 ; reset x coord
 			add [y_coordinate], ax ; next row
 			pop cx
 		loop clearing_row_mechanism
+
+		; clearing lines-based score mechanism:
+		cmp [lines_cleared], 1
+		je cleared_1_rows
+		cmp [lines_cleared], 2
+		je cleared_2_rows
+		cmp [lines_cleared], 3
+		je cleared_3_rows
+		cmp [lines_cleared], 4
+		je cleared_4_rows
+		jmp next_piece ; if didn't clear (or bugged)
+
+		cleared_1_rows:
+			mov cx, 4
+			cleared_1_rows_score_loop:
+				call inc_score_second_digit
+				loop cleared_1_rows_score_loop
+
+			mov [x_column], 3
+			mov [y_row], 15
+			call cursor_location
+			call draw_score
+			jmp next_piece
+
+		cleared_2_rows:
+			mov cx, 1
+			cleared_2_rows_score_loop:
+				call inc_score_third_digit
+				loop cleared_2_rows_score_loop
+
+			mov [x_column], 3
+			mov [y_row], 15
+			call cursor_location
+			call draw_score
+			jmp next_piece
+		cleared_3_rows:
+			mov cx, 3
+			cleared_3_rows_score_loop:
+				call inc_score_third_digit
+				loop cleared_3_rows_score_loop
+
+			mov [x_column], 3
+			mov [y_row], 15
+			call cursor_location
+			call draw_score
+			jmp next_piece
+		cleared_4_rows:
+			mov cx, 12
+			cleared_4_rows_score_loop:
+				call inc_score_third_digit
+				loop cleared_4_rows_score_loop
+
+			mov [x_column], 3
+			mov [y_row], 15
+			call cursor_location
+			call draw_score
+			jmp next_piece
 
 	next_piece:
 			call erase_queue_thumblnails
@@ -6512,7 +6660,12 @@ mainGameLoop:
 				jmp hold_new_piece
 
 			fast_dropping:
-
+				call inc_score_first_digit
+				mov [x_column], 3
+				mov [y_row], 15
+				call cursor_location
+				call draw_score
+				mov cx, 1
 
 			addDelay: 
 				call delay ; add delay
