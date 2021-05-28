@@ -40,7 +40,7 @@ light_colour dw 0Fh ; light colour - unique for each piece
 
 current_piece dw 6 ; 0 = t-piece, 1 = o-piece, 2 = j-piece, 3 = l-piece, 4 = i-piece, 5 = s-piece, 6 = z-piece
 current_piece_rotation dw 1 ; rotation of the piece, the number of the postion
-move_down_speed dw 7000h ; speed of moving down, mostly the same, but shorter when sped up
+move_down_speed dw 9000h ; speed of moving down, mostly the same, but shorter when sped up
 
 move_down_failed db 0 ; boolean, whether moving down failed, 0 = not failed, 1 = failed
 up_key_pressed db 0 ; boolean, whether up key was pressed, 0 = not, 1 = yes
@@ -61,12 +61,15 @@ min_queue_last_7 db 14 ; when calculating the las 7 spots in the queue, when the
 queue_iteration db 0
 
 x_column db 3
-y_row db 15
+y_row db 13
 character db '2'
 char_colour db 2
 
 score db 10 dup(0), "$"
-lines_cleared db 0
+lines_cleared_this_turn db 0
+level db 2 dup(0), "$"
+lines_cleared dw 0
+default_speed dw 750h
 
 ; -------- rand variables ---------
 modulus dw 6075
@@ -266,7 +269,7 @@ proc Print_Text ;print text in dx
 	int 21h
 	popa
 	ret
-	endp Print_Text
+endp Print_Text
 	
 ; _________graphics_________
 proc drawSquare
@@ -6371,10 +6374,263 @@ proc inc_score_third_digit
 	ret
 endp inc_score_third_digit
 
+proc draw_level
+	pusha
+	mov bx, offset level
+	mov si, 0
+	mov cx, 2
+	draw_level_add_loop:
+		add [bx+si], '0'
+		inc si
+		loop draw_level_add_loop
+
+	mov dx, offset level
+	call print_text
+
+	mov bx, offset level
+	mov si, 0
+	mov cx, 2
+	draw_level_sub_loop:
+		sub [bx+si], '0'
+		inc si
+		loop draw_level_sub_loop
+	popa
+	ret
+endp draw_level
+
+proc calculate_level
+	pusha
+	mov bx, offset level
+	cmp [lines_cleared], 5
+	jb level_0
+	cmp [lines_cleared], 10
+	jb level_1
+	cmp [lines_cleared], 15
+	jb level_2
+	cmp [lines_cleared], 20
+	jb level_3
+	cmp [lines_cleared], 30
+	jb level_4
+	cmp [lines_cleared], 40
+	jb level_5
+	cmp [lines_cleared], 50
+	jb level_6
+	cmp [lines_cleared], 60
+	jb level_7
+	cmp [lines_cleared], 70
+	jb level_8
+	cmp [lines_cleared], 80
+	jb level_9
+	cmp [lines_cleared], 100
+	jb level_10
+	cmp [lines_cleared], 120
+	jb level_11
+	cmp [lines_cleared], 140
+	jb level_12
+	cmp [lines_cleared], 160
+	jb level_13
+	cmp [lines_cleared], 180
+	jb level_14
+	cmp [lines_cleared], 200
+	jb level_15
+	cmp [lines_cleared], 240
+	jb level_16
+	cmp [lines_cleared], 280
+	jb level_17
+	cmp [lines_cleared], 330
+	jb level_18
+	cmp [lines_cleared], 400
+	jb level_19
+	cmp [lines_cleared], 500
+	jb level_20
+	cmp [lines_cleared], 550
+	jb level_21
+	
+
+	level_0:
+		mov al, 0
+		mov [bx+1], al
+		mov al, 0
+		mov [bx+0], al
+		mov [default_speed], 0ffffh
+		popa
+		ret
+	level_1:
+		mov al, 1
+		mov [bx+1], al
+		mov al, 0
+		mov [bx+0], al
+		mov [default_speed], 0e000h
+		popa
+		ret
+	level_2:
+		mov al, 2
+		mov [bx+1], al
+		mov al, 0
+		mov [bx+0], al
+		mov [default_speed], 0d000h
+		popa
+		ret
+	level_3:
+		mov al, 3
+		mov [bx+1], al
+		mov al, 0
+		mov [bx+0], al
+		mov [default_speed], 0c000h
+		popa
+		ret
+	level_4:
+		mov al, 4
+		mov [bx+1], al
+		mov al, 0
+		mov [bx+0], al
+		mov [default_speed], 0b000h
+		popa
+		ret
+	level_5:
+		mov al, 5
+		mov [bx+1], al
+		mov al, 0
+		mov [bx+0], al
+		mov [default_speed], 0afffh
+		popa
+		ret
+	level_6:
+		mov al, 6
+		mov [bx+1], al
+		mov al, 0
+		mov [bx+0], al
+		mov [default_speed], 09800h
+		popa
+		ret
+	level_7:
+		mov al, 7
+		mov [bx+1], al
+		mov al, 0
+		mov [bx+0], al
+		mov [default_speed], 09000h
+		popa
+		ret
+	level_8:
+		mov al, 8
+		mov [bx+1], al
+		mov al, 0
+		mov [bx+0], al
+		mov [default_speed], 08800h
+		popa
+		ret
+	level_9:
+		mov al, 9
+		mov [bx+1], al
+		mov al, 0
+		mov [bx+0], al
+		mov [default_speed], 08000h
+		popa
+		ret
+	level_10:
+		mov al, 0
+		mov [bx+1], al
+		mov al, 1
+		mov [bx+0], al
+		mov [default_speed], 07800h
+		popa
+		ret
+	level_11:
+		mov al, 1
+		mov [bx+1], al
+		mov al, 1
+		mov [bx+0], al
+		mov [default_speed], 07000h
+		popa
+		ret
+	level_12:
+		mov al, 2
+		mov [bx+1], al
+		mov al, 1
+		mov [bx+0], al
+		mov [default_speed], 06000h
+		popa
+		ret
+	level_13:
+		mov al, 3
+		mov [bx+1], al
+		mov al, 1
+		mov [bx+0], al
+		mov [default_speed], 05000h
+		popa
+		ret
+	level_14:
+		mov al, 4
+		mov [bx+1], al
+		mov al, 1
+		mov [bx+0], al
+		mov [default_speed], 04000h
+		popa
+		ret
+	level_15:
+		mov al, 5
+		mov [bx+1], al
+		mov al, 1
+		mov [bx+0], al
+		mov [default_speed], 03000h
+		popa
+		ret
+	level_16:
+		mov al, 6
+		mov [bx+1], al
+		mov al, 1
+		mov [bx+0], al
+		mov [default_speed], 02000h
+		popa
+		ret
+	level_17:
+		mov al, 7
+		mov [bx+1], al
+		mov al, 1
+		mov [bx+0], al
+		mov [default_speed], 01000h
+		popa
+		ret
+	level_18:
+		mov al, 8
+		mov [bx+1], al
+		mov al, 1
+		mov [bx+0], al
+		mov [default_speed], 800h
+		popa
+		ret
+	level_19:
+		mov al, 9
+		mov [bx+1], al
+		mov al, 1
+		mov [bx+0], al
+		mov [default_speed], 750h
+		popa
+		ret
+	level_20:
+		mov al, 0
+		mov [bx+1], al
+		mov al, 2
+		mov [bx+0], al
+		mov [default_speed], 400h
+		popa
+		ret
+	level_21:
+		mov al, 1
+		mov [bx+1], al
+		mov al, 2
+		mov [bx+0], al
+		mov [default_speed], 200h
+		popa
+		ret
+endp calculate_level
+
 start:
 mov ax, @data
 mov ds, ax
-; Graphic mode
+
+; CODE:
+	; Graphic mode
     call entergraphicmode
 
 	call initializerandom
@@ -6404,10 +6660,10 @@ mov ds, ax
 
 	mov [queue_iteration], 0
 
-; Process BMP file
+	; Process BMP file
 
-mov cx, offset filename1 
-mov [filename], cx
+	mov cx, offset filename1 
+	mov [filename], cx
 
     call OpenFile
     call ReadHeader
@@ -6417,15 +6673,22 @@ mov [filename], cx
 
     call waitforkeypress
 
+	mov [x_column], 3
+	mov [y_row], 15
 	call cursor_location
 	call draw_score
+
+	mov [x_column], 7
+	mov [y_row], 13
+	call cursor_location
+	call draw_level
 
 	call waitforkeypress
 
 mainGameLoop:
 		; reset hard variables (so mechanisms like hold won't reset them)
 		mov [held_this_turn], 0
-		mov [lines_cleared], 0
+		mov [lines_cleared_this_turn], 0
 
 		; this code segment checks each row and if every square in it isn't empty (not black) if it is, this segment empties the row
 		mov [x_coordinate], 120
@@ -6457,6 +6720,7 @@ mainGameLoop:
 			push [line]
 			mov [x_coordinate], 120 ; reset x coord
 			call move_down_lines
+			inc [lines_cleared_this_turn]
 			inc [lines_cleared]
 		finished_clearing_row_mechanism:
 			mov [x_coordinate], 120 ; reset x coord
@@ -6464,14 +6728,20 @@ mainGameLoop:
 			pop cx
 		loop clearing_row_mechanism
 
+		call calculate_level
+		mov [x_column], 7
+		mov [y_row], 13
+		call cursor_location
+		call draw_level
+
 		; clearing lines-based score mechanism:
-		cmp [lines_cleared], 1
+		cmp [lines_cleared_this_turn], 1
 		je cleared_1_rows
-		cmp [lines_cleared], 2
+		cmp [lines_cleared_this_turn], 2
 		je cleared_2_rows
-		cmp [lines_cleared], 3
+		cmp [lines_cleared_this_turn], 3
 		je cleared_3_rows
-		cmp [lines_cleared], 4
+		cmp [lines_cleared_this_turn], 4
 		je cleared_4_rows
 		jmp next_piece ; if didn't clear (or bugged)
 
@@ -6551,7 +6821,8 @@ mainGameLoop:
 		mov [x_coordinate], 144
 		mov [move_down_failed], 0
 		mov [current_piece_rotation], 1
-		mov [move_down_speed], 7000h
+		push [default_speed]
+		pop [move_down_speed]
 		mov [up_key_pressed], 0
 		mov [game_over], 0
 		call is_game_over
@@ -6565,7 +6836,8 @@ mainGameLoop:
 			; check if thre is a charcter to read
 			cmp [up_key_pressed], 1
 			je fast_dropping ; up key means shooting it down, so just keeping on moving down until it reaches the next piece
-			mov [move_down_speed], 7000h ; slow down (for down key)
+			push [default_speed]
+			pop [move_down_speed] ; slow down (for down key)
 			mov [pressedkey], 0
 			mov ah, 1h
 			int 16h
