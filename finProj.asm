@@ -67,8 +67,11 @@ char_colour db 2
 
 score db 10 dup(0), "$"
 lines_cleared_this_turn db 0
+
 level db 2 dup(0), "$"
+level_num db 0
 lines_cleared dw 0
+lines_cleared_printable db 3 dup(0), "$"
 default_speed dw 750h
 
 ; -------- rand variables ---------
@@ -6290,12 +6293,17 @@ endp black_held_piece_thumbnail
 
 proc draw_score
 	pusha
+	mov [x_column], 3
+	mov [y_row], 15
+	call cursor_location
+
 	mov bx, offset score
 	mov dx, offset score
 	mov si, 0
 	mov cx, 10
 	draw_score_add_loop:
-		add [bx+si], '0'
+		mov al, '0'
+		add [bx+si], al
 		inc si
 		loop draw_score_add_loop
 
@@ -6304,7 +6312,8 @@ proc draw_score
 	mov si, 0
 	mov cx, 10
 	draw_score_sub_loop:
-		sub [bx+si], '0'
+		mov al, '0'
+		sub [bx+si], al
 		inc si
 		loop draw_score_sub_loop
 	popa
@@ -6376,22 +6385,28 @@ endp inc_score_third_digit
 
 proc draw_level
 	pusha
+
+	mov [x_column], 11
+	mov [y_row], 13
+	call cursor_location
+
 	mov bx, offset level
+	mov dx, offset level
 	mov si, 0
 	mov cx, 2
 	draw_level_add_loop:
-		add [bx+si], '0'
+		mov al, '0'
+		add [bx+si], al
 		inc si
 		loop draw_level_add_loop
 
-	mov dx, offset level
 	call print_text
 
-	mov bx, offset level
 	mov si, 0
 	mov cx, 2
 	draw_level_sub_loop:
-		sub [bx+si], '0'
+		mov al, '0'
+		sub [bx+si], al
 		inc si
 		loop draw_level_sub_loop
 	popa
@@ -6443,11 +6458,12 @@ proc calculate_level
 	jb level_19
 	cmp [lines_cleared], 500
 	jb level_20
-	cmp [lines_cleared], 550
-	jb level_21
+
+	jmp level_21
 	
 
 	level_0:
+		mov [level_num], 0
 		mov al, 0
 		mov [bx+1], al
 		mov al, 0
@@ -6456,6 +6472,7 @@ proc calculate_level
 		popa
 		ret
 	level_1:
+		mov [level_num], 1
 		mov al, 1
 		mov [bx+1], al
 		mov al, 0
@@ -6464,6 +6481,7 @@ proc calculate_level
 		popa
 		ret
 	level_2:
+		mov [level_num], 2
 		mov al, 2
 		mov [bx+1], al
 		mov al, 0
@@ -6472,6 +6490,7 @@ proc calculate_level
 		popa
 		ret
 	level_3:
+		mov [level_num], 3
 		mov al, 3
 		mov [bx+1], al
 		mov al, 0
@@ -6480,6 +6499,7 @@ proc calculate_level
 		popa
 		ret
 	level_4:
+		mov [level_num], 4
 		mov al, 4
 		mov [bx+1], al
 		mov al, 0
@@ -6488,6 +6508,7 @@ proc calculate_level
 		popa
 		ret
 	level_5:
+		mov [level_num], 5
 		mov al, 5
 		mov [bx+1], al
 		mov al, 0
@@ -6496,6 +6517,7 @@ proc calculate_level
 		popa
 		ret
 	level_6:
+		mov [level_num], 6
 		mov al, 6
 		mov [bx+1], al
 		mov al, 0
@@ -6504,6 +6526,7 @@ proc calculate_level
 		popa
 		ret
 	level_7:
+		mov [level_num], 7
 		mov al, 7
 		mov [bx+1], al
 		mov al, 0
@@ -6512,6 +6535,7 @@ proc calculate_level
 		popa
 		ret
 	level_8:
+		mov [level_num], 8
 		mov al, 8
 		mov [bx+1], al
 		mov al, 0
@@ -6520,6 +6544,7 @@ proc calculate_level
 		popa
 		ret
 	level_9:
+		mov [level_num], 9
 		mov al, 9
 		mov [bx+1], al
 		mov al, 0
@@ -6528,6 +6553,7 @@ proc calculate_level
 		popa
 		ret
 	level_10:
+		mov [level_num], 10
 		mov al, 0
 		mov [bx+1], al
 		mov al, 1
@@ -6536,6 +6562,7 @@ proc calculate_level
 		popa
 		ret
 	level_11:
+		mov [level_num], 11
 		mov al, 1
 		mov [bx+1], al
 		mov al, 1
@@ -6544,6 +6571,7 @@ proc calculate_level
 		popa
 		ret
 	level_12:
+		mov [level_num], 12
 		mov al, 2
 		mov [bx+1], al
 		mov al, 1
@@ -6552,6 +6580,7 @@ proc calculate_level
 		popa
 		ret
 	level_13:
+		mov [level_num], 13
 		mov al, 3
 		mov [bx+1], al
 		mov al, 1
@@ -6560,6 +6589,7 @@ proc calculate_level
 		popa
 		ret
 	level_14:
+		mov [level_num], 14
 		mov al, 4
 		mov [bx+1], al
 		mov al, 1
@@ -6568,6 +6598,7 @@ proc calculate_level
 		popa
 		ret
 	level_15:
+		mov [level_num], 15
 		mov al, 5
 		mov [bx+1], al
 		mov al, 1
@@ -6576,6 +6607,7 @@ proc calculate_level
 		popa
 		ret
 	level_16:
+		mov [level_num], 16
 		mov al, 6
 		mov [bx+1], al
 		mov al, 1
@@ -6584,6 +6616,7 @@ proc calculate_level
 		popa
 		ret
 	level_17:
+		mov [level_num], 17
 		mov al, 7
 		mov [bx+1], al
 		mov al, 1
@@ -6592,6 +6625,7 @@ proc calculate_level
 		popa
 		ret
 	level_18:
+		mov [level_num], 18
 		mov al, 8
 		mov [bx+1], al
 		mov al, 1
@@ -6600,6 +6634,7 @@ proc calculate_level
 		popa
 		ret
 	level_19:
+		mov [level_num], 19
 		mov al, 9
 		mov [bx+1], al
 		mov al, 1
@@ -6608,6 +6643,7 @@ proc calculate_level
 		popa
 		ret
 	level_20:
+		mov [level_num], 20
 		mov al, 0
 		mov [bx+1], al
 		mov al, 2
@@ -6616,6 +6652,7 @@ proc calculate_level
 		popa
 		ret
 	level_21:
+		mov [level_num], 21
 		mov al, 1
 		mov [bx+1], al
 		mov al, 2
@@ -6624,6 +6661,57 @@ proc calculate_level
 		popa
 		ret
 endp calculate_level
+
+proc draw_cleared_lines
+	pusha
+
+	mov [x_column], 10
+	mov [y_row], 17
+	call cursor_location
+
+	mov bx, offset lines_cleared_printable
+	mov dx, offset lines_cleared_printable
+	mov si, 0
+	mov cx, 3
+	draw_cleared_lines_add_loop:
+		mov al, '0'
+		add [bx+si], al
+		inc si
+		loop draw_cleared_lines_add_loop
+
+	call print_text
+
+	mov si, 0
+	mov cx, 3
+	draw_cleared_lines_sub_loop:
+		mov al, '0'
+		sub [bx+si], al
+		inc si
+		loop draw_cleared_lines_sub_loop
+	popa
+	ret
+endp draw_cleared_lines
+
+proc inc_cleared_lines
+	pusha
+	mov bx, offset lines_cleared_printable
+	mov si, 2
+	mov cx, 2
+	inc_digit_cleared_lines:
+		inc [bx+si]
+		mov dl, 9
+		cmp [bx+si], dl
+		ja digit_overflow_cleared_lines
+		popa
+		ret
+	digit_overflow_cleared_lines:
+		mov dl, 0
+		mov [bx+si], dl
+		dec si
+		loop inc_digit_cleared_lines
+	popa
+	ret
+endp inc_cleared_lines
 
 start:
 mov ax, @data
@@ -6671,17 +6759,11 @@ mov ds, ax
     call CopyPal
     call CopyBitmap
 
-    call waitforkeypress
-
-	mov [x_column], 3
-	mov [y_row], 15
-	call cursor_location
 	call draw_score
-
-	mov [x_column], 7
-	mov [y_row], 13
-	call cursor_location
 	call draw_level
+	call draw_cleared_lines
+
+	call draw_cleared_lines
 
 	call waitforkeypress
 
@@ -6722,16 +6804,16 @@ mainGameLoop:
 			call move_down_lines
 			inc [lines_cleared_this_turn]
 			inc [lines_cleared]
+			call inc_cleared_lines
 		finished_clearing_row_mechanism:
 			mov [x_coordinate], 120 ; reset x coord
 			add [y_coordinate], ax ; next row
 			pop cx
 		loop clearing_row_mechanism
 
+		call draw_cleared_lines
+
 		call calculate_level
-		mov [x_column], 7
-		mov [y_row], 13
-		call cursor_location
 		call draw_level
 
 		; clearing lines-based score mechanism:
@@ -6746,48 +6828,56 @@ mainGameLoop:
 		jmp next_piece ; if didn't clear (or bugged)
 
 		cleared_1_rows:
-			mov cx, 4
+			mov ax, 4
+			mov cl, [level_num]
+			mov ch, 0
+			inc cx
+			mul cx
+			mov cx, ax
 			cleared_1_rows_score_loop:
 				call inc_score_second_digit
 				loop cleared_1_rows_score_loop
 
-			mov [x_column], 3
-			mov [y_row], 15
-			call cursor_location
 			call draw_score
 			jmp next_piece
 
 		cleared_2_rows:
-			mov cx, 1
+			mov ax, 1
+			mov cl, [level_num]
+			mov ch, 0
+			inc cx
+			mul cx
+			mov cx, ax
 			cleared_2_rows_score_loop:
 				call inc_score_third_digit
 				loop cleared_2_rows_score_loop
 
-			mov [x_column], 3
-			mov [y_row], 15
-			call cursor_location
 			call draw_score
 			jmp next_piece
 		cleared_3_rows:
-			mov cx, 3
+			mov ax, 3
+			mov cl, [level_num]
+			mov ch, 0
+			inc cx
+			mul cx
+			mov cx, ax
 			cleared_3_rows_score_loop:
 				call inc_score_third_digit
 				loop cleared_3_rows_score_loop
 
-			mov [x_column], 3
-			mov [y_row], 15
-			call cursor_location
 			call draw_score
 			jmp next_piece
 		cleared_4_rows:
-			mov cx, 12
+			mov ax, 12
+			mov cl, [level_num]
+			mov ch, 0
+			inc cx
+			mul cx
+			mov cx, ax
 			cleared_4_rows_score_loop:
 				call inc_score_third_digit
 				loop cleared_4_rows_score_loop
 
-			mov [x_column], 3
-			mov [y_row], 15
-			call cursor_location
 			call draw_score
 			jmp next_piece
 
@@ -6933,9 +7023,6 @@ mainGameLoop:
 
 			fast_dropping:
 				call inc_score_first_digit
-				mov [x_column], 3
-				mov [y_row], 15
-				call cursor_location
 				call draw_score
 				mov cx, 1
 
