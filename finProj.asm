@@ -1,8 +1,3 @@
-; ------------------------------------------------------------------------------------------------------------
-; Read a BMP file 320x200 and print it to screen
-; Author: Barak Gonen, 2014
-; Credit: Diego Escala, www.ece.msstate.edu/~reese/EE3724/labs/lab9/bitmap.asm
-; -------------------------------------------------------------------------------------------------------------
 IDEAL
 MODEL small
 STACK 100h
@@ -17,6 +12,8 @@ DATASEG
 ; --------- image handler ---------
 filename dw ?
 filename1 db 'pic2019.bmp',0
+filename2 db 'pic2020.bmp',0
+filename3 db 'pic2021.bmp',0
 
 filehandle dw ?
 Header db 54 dup (0)
@@ -6156,9 +6153,6 @@ endp black_held_piece_thumbnail
 
 proc draw_score
 	pusha
-	mov [x_column], 3
-	mov [y_row], 15
-	call cursor_location
 
 	mov bx, offset score
 	mov dx, offset score
@@ -6248,10 +6242,6 @@ endp inc_score_third_digit
 
 proc draw_level
 	pusha
-
-	mov [x_column], 11
-	mov [y_row], 13
-	call cursor_location
 
 	mov bx, offset level
 	mov dx, offset level
@@ -6528,10 +6518,6 @@ endp calculate_level
 proc draw_cleared_lines
 	pusha
 
-	mov [x_column], 10
-	mov [y_row], 17
-	call cursor_location
-
 	mov bx, offset lines_cleared_printable
 	mov dx, offset lines_cleared_printable
 	mov si, 0
@@ -6580,8 +6566,69 @@ start:
 mov ax, @data
 mov ds, ax
 
-; CODE:
-	; Graphic mode
+;start screen:
+	call entergraphicmode
+
+	mov cx, offset filename2 ; print screen
+	mov [filename], cx
+    call OpenFile
+    call ReadHeader
+    call ReadPalette
+    call CopyPal
+    call CopyBitmap
+	
+	call waitforkeypress
+
+	cmp [pressedkey], '1'
+	je level_1_start
+	cmp [pressedkey], '2'
+	je level_2_start
+	cmp [pressedkey], '3'
+	je level_3_start
+	cmp [pressedkey], '4'
+	je level_4_start
+	cmp [pressedkey], '5'
+	je level_5_start
+	cmp [pressedkey], '6'
+	je level_6_start
+	cmp [pressedkey], '7'
+	je level_7_start
+	cmp [pressedkey], '8'
+	je level_8_start
+	cmp [pressedkey], '9'
+	je level_9_start
+	jmp game_start
+
+	level_1_start:
+		mov [lines_cleared], 5
+		jmp game_start
+	level_2_start:
+		mov [lines_cleared], 10
+		jmp game_start
+	level_3_start:
+		mov [lines_cleared], 15
+		jmp game_start
+	level_4_start:
+		mov [lines_cleared], 20
+		jmp game_start
+	level_5_start:
+		mov [lines_cleared], 30
+		jmp game_start
+	level_6_start:
+		mov [lines_cleared], 40
+		jmp game_start
+	level_7_start:
+		mov [lines_cleared], 50
+		jmp game_start
+	level_8_start:
+		mov [lines_cleared], 60
+		jmp game_start
+	level_9_start:
+		mov [lines_cleared], 70
+		jmp game_start
+
+game_start:
+
     call entergraphicmode
 
 	call initializerandom
@@ -6622,25 +6669,32 @@ mov ds, ax
     call CopyPal
     call CopyBitmap
 
+	mov [x_column], 3
+	mov [y_row], 15
+	call cursor_location
 	call draw_score
+
+	mov [x_column], 11
+	mov [y_row], 13
+	call cursor_location
 	call draw_level
-	call draw_cleared_lines
 
+	mov [x_column], 10
+	mov [y_row], 17
+	call cursor_location
 	call draw_cleared_lines
-
-	call waitforkeypress
 
 mainGameLoop:
-		; reset hard variables (so mechanisms like hold won't reset them)
-		mov [held_this_turn], 0
-		mov [lines_cleared_this_turn], 0
+	; reset hard variables (so mechanisms like hold won't reset them)
+	mov [held_this_turn], 0
+	mov [lines_cleared_this_turn], 0
 
-		; this code segment checks each row and if every square in it isn't empty (not black) if it is, this segment empties the row
-		mov [x_coordinate], 120
-		mov [y_coordinate], 17
-		mov ax, [square_size] ; square size as a register
+	; this code segment checks each row and if every square in it isn't empty (not black) if it is, this segment empties the row
+	mov [x_coordinate], 120
+	mov [y_coordinate], 17
+	mov ax, [square_size] ; square size as a register
 
-		mov cx, 21 ; for each row
+	mov cx, 21 ; for each row
 	clearing_row_mechanism:
 			push cx
 
@@ -6674,9 +6728,16 @@ mainGameLoop:
 			pop cx
 		loop clearing_row_mechanism
 
+		mov [x_column], 10
+		mov [y_row], 17
+		call cursor_location
 		call draw_cleared_lines
 
 		call calculate_level
+
+		mov [x_column], 11
+		mov [y_row], 13
+		call cursor_location
 		call draw_level
 
 		; clearing lines-based score mechanism:
@@ -6701,6 +6762,9 @@ mainGameLoop:
 				call inc_score_second_digit
 				loop cleared_1_rows_score_loop
 
+			mov [x_column], 3
+			mov [y_row], 15
+			call cursor_location
 			call draw_score
 			jmp next_piece
 
@@ -6715,6 +6779,9 @@ mainGameLoop:
 				call inc_score_third_digit
 				loop cleared_2_rows_score_loop
 
+			mov [x_column], 3
+			mov [y_row], 15
+			call cursor_location
 			call draw_score
 			jmp next_piece
 		cleared_3_rows:
@@ -6728,6 +6795,9 @@ mainGameLoop:
 				call inc_score_third_digit
 				loop cleared_3_rows_score_loop
 
+			mov [x_column], 3
+			mov [y_row], 15
+			call cursor_location
 			call draw_score
 			jmp next_piece
 		cleared_4_rows:
@@ -6741,6 +6811,9 @@ mainGameLoop:
 				call inc_score_third_digit
 				loop cleared_4_rows_score_loop
 
+			mov [x_column], 3
+			mov [y_row], 15
+			call cursor_location
 			call draw_score
 			jmp next_piece
 
@@ -6886,6 +6959,9 @@ mainGameLoop:
 
 			fast_dropping:
 				call inc_score_first_digit
+				mov [x_column], 3
+				mov [y_row], 15
+				call cursor_location
 				call draw_score
 				mov cx, 1
 
@@ -6922,6 +6998,33 @@ mainGameLoop:
 end_game:
 	mov [move_down_speed], 0ffffh
 	call delay
+
+	call entergraphicmode
+
+	mov cx, offset filename3 ; print screen
+	mov [filename], cx
+    call OpenFile
+    call ReadHeader
+    call ReadPalette
+    call CopyPal
+    call CopyBitmap
+
+	mov [x_column], 15
+	mov [y_row], 17
+	call cursor_location
+	call draw_score
+
+	mov [x_column], 23
+	mov [y_row], 15
+	call cursor_location
+	call draw_level
+
+	mov [x_column], 22
+	mov [y_row], 19
+	call cursor_location
+	call draw_cleared_lines
+
+	call waitforkeypress
 
 	;text mode
 	mov al, 03h 
