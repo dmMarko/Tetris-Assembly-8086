@@ -245,9 +245,10 @@ endp delay
 
 proc Cursor_Location ;Place the cursor on the screen by player/level cords
 	pusha
+	; set cursor location
 	mov bh, 0
 	mov dh, [y_row] ; in row
-	mov dl, [x_column]
+	mov dl, [x_column] ; in column
 	mov ah, 2
 	int 10h
 	popa
@@ -256,6 +257,7 @@ endp Cursor_Location
 
 proc Draw_Char
 	pusha
+	; print a single character to screen
 	mov ah, 9
 	mov al, [character] ;AL = character to display
 	mov bh, 0h ;BH=Page
@@ -277,26 +279,28 @@ endp Print_Text
 ; _________graphics_________
 proc drawSquare
 		push cx
+		; draw a basic square using the given colours
 
 		; outer square
 		mov cx, [main_colour] ; set colour to main colour
 		mov [colour], cx
 		push [y_coordinate]
 		mov cx, [square_size] ; set column loop counter
-	drawSquare_column:
-		push cx ; push to not lose big loop counter
-		push [x_coordinate] ; in order to reset the x_coord every row
-		mov cx, [square_size] ; set row loop counter
-	drawSquare_row:
-		call drawpixel ; draw pixel
-		inc [x_coordinate] 
-		loop drawsquare_row ; loop for the whole row 
+		drawSquare_column:
+			push cx ; push to not lose big loop counter
+			push [x_coordinate] ; in order to reset the x_coord every row
+			
+			mov cx, [square_size] ; set row loop counter
+			drawSquare_row:
+				call drawpixel ; draw pixel
+				inc [x_coordinate] 
+				loop drawsquare_row ; loop for the whole row 
 
-		pop [x_coordinate] ; reset x_coord
-		pop cx ; get big loop counter back
-		
-		inc [y_coordinate] ; next row
-		loop drawsquare_column
+			pop [x_coordinate] ; reset x_coord
+			pop cx ; get big loop counter back
+			inc [y_coordinate] ; next row
+			loop drawsquare_column
+
 		pop [y_coordinate] ; reset y_coord
 		
 		;border
@@ -305,10 +309,10 @@ proc drawSquare
 		mov cx, [light_colour]
 		mov [colour], cx ; set colour to light colour
 		mov cx, [square_size]
-	drawSquare_border_top:
-		call drawpixel ; draw pixel
-		inc [x_coordinate] 
-		loop drawsquare_border_top ; loop for the whole row 
+		drawSquare_border_top:
+			call drawpixel ; draw pixel
+			inc [x_coordinate] 
+			loop drawsquare_border_top ; loop for the whole row 
 		dec [x_coordinate]
 		inc [y_coordinate]
 
@@ -317,17 +321,17 @@ proc drawSquare
 
 		mov cx, [square_size]
 		dec cx
-	drawSquare_border_right:
-		call drawpixel ; draw pixel
-		inc [y_coordinate] 
-		loop drawsquare_border_right ; loop for the whole column 
+		drawSquare_border_right:
+			call drawpixel ; draw pixel
+			inc [y_coordinate] 
+			loop drawsquare_border_right ; loop for the whole column 
 		dec [y_coordinate]
 
 		mov cx, [square_size]
-	drawSquare_border_bottom:
-		call drawpixel ; draw pixel
-		dec [x_coordinate] 
-		loop drawsquare_border_bottom ; loop for the whole row 
+		drawSquare_border_bottom:
+			call drawpixel ; draw pixel
+			dec [x_coordinate] 
+			loop drawsquare_border_bottom ; loop for the whole row 
 		inc [x_coordinate]
 		dec [y_coordinate]
 
@@ -336,10 +340,10 @@ proc drawSquare
 
 		mov cx, [square_size]
 		dec cx
-	drawSquare_border_left:
-		call drawpixel ; draw pixel
-		dec [y_coordinate] 
-		loop drawsquare_border_left ; loop for the whole column 
+		drawSquare_border_left:
+			call drawpixel ; draw pixel
+			dec [y_coordinate] 
+			loop drawsquare_border_left ; loop for the whole column 
 		pop [y_coordinate]
 		pop [x_coordinate]
 
@@ -369,10 +373,10 @@ proc drawTPiece_1
 		add [y_coordinate], ax
 		
 		mov cx, 3 ; draw bottom 3 pieces
-	drawTPiece_1_bottomLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop drawTPiece_1_bottomLoop
+		drawTPiece_1_bottomLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop drawTPiece_1_bottomLoop
 
 		pop ax
 		pop cx
@@ -403,10 +407,10 @@ proc blackTPiece_1
 		add [y_coordinate], ax
 		
 		mov cx, 3 ; draw bottom 3 pieces
-	blackTPiece_1_bottomLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop blackTPiece_1_bottomLoop
+		blackTPiece_1_bottomLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop blackTPiece_1_bottomLoop
 
 		pop ax
 		pop cx
@@ -438,10 +442,10 @@ proc drawTPiece_2
 		add [x_coordinate], ax
 		
 		mov cx, 3 ; draw middle 3 pieces
-	drawTPiece_2_middleLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop drawTPiece_2_middleLoop
+		drawTPiece_2_middleLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop drawTPiece_2_middleLoop
 
 		pop ax
 		pop cx
@@ -473,10 +477,10 @@ proc blackTPiece_2
 		add [x_coordinate], ax
 		
 		mov cx, 3 ; black middle 3 pieces
-	blackTPiece_2_middleLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop blackTPiece_2_middleLoop
+		blackTPiece_2_middleLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop blackTPiece_2_middleLoop
 
 		pop ax
 		pop cx
@@ -509,10 +513,10 @@ proc drawTPiece_3
 		sub [y_coordinate], ax
 		
 		mov cx, 3 ; draw top 3 pieces
-	drawTPiece_3_topLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop drawTPiece_3_topLoop
+		drawTPiece_3_topLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop drawTPiece_3_topLoop
 
 		pop ax
 		pop cx
@@ -545,10 +549,10 @@ proc blackTPiece_3
 		sub [y_coordinate], ax
 		
 		mov cx, 3 ; black top 3 pieces
-	blackTPiece_3_topLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop blackTPiece_3_topLoop
+		blackTPiece_3_topLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop blackTPiece_3_topLoop
 
 		pop ax
 		pop cx
@@ -582,10 +586,10 @@ proc drawTPiece_4
 		sub [x_coordinate], ax
 		
 		mov cx, 3 ; draw middle 3 pieces
-	drawTPiece_4_middleLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop drawTPiece_4_middleLoop
+		drawTPiece_4_middleLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop drawTPiece_4_middleLoop
 
 		pop ax
 		pop cx
@@ -619,10 +623,10 @@ proc blackTPiece_4
 		sub [x_coordinate], ax
 		
 		mov cx, 3 ; black middle 3 pieces
-	blackTPiece_4_middleLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop blackTPiece_4_middleLoop
+		blackTPiece_4_middleLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop blackTPiece_4_middleLoop
 
 		pop ax
 		pop cx
@@ -709,10 +713,10 @@ proc drawJPiece_1
 		mov [border_colour], 40h
 
 		mov cx, 3 ; draw top 3 pieces
-	drawJPiece_1_topLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop drawJPiece_1_topLoop
+		drawJPiece_1_topLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop drawJPiece_1_topLoop
 
 		sub [x_coordinate], ax 
 		add [y_coordinate], ax ; bottom square position
@@ -741,10 +745,10 @@ proc blackJPiece_1
 		mov [border_colour], 0
 
 		mov cx, 3 ; black top 3 pieces
-	blackJPiece_1_topLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop blackJPiece_1_topLoop
+		blackJPiece_1_topLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop blackJPiece_1_topLoop
 
 		sub [x_coordinate], ax
 		add [y_coordinate], ax ; bottom square position
@@ -778,10 +782,10 @@ proc drawJPiece_2
 
 		sub [x_coordinate], ax ; left squares position
 		mov cx, 3 ; draw left 3 pieces
-	drawJPiece_2_leftLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop drawJPiece_2_leftLoop
+		drawJPiece_2_leftLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop drawJPiece_2_leftLoop
 
 		pop ax
 		pop cx
@@ -811,10 +815,10 @@ proc blackJPiece_2
 
 		sub [x_coordinate], ax ; left squares position
 		mov cx, 3 ; black left 3 pieces
-	blackJPiece_2_leftLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop blackJPiece_2_leftLoop
+		blackJPiece_2_leftLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop blackJPiece_2_leftLoop
 
 		pop ax
 		pop cx
@@ -844,10 +848,10 @@ proc drawJPiece_3
 
 		add [y_coordinate], ax ; top square position
 		mov cx, 3 ; draw bottom 3 pieces
-	drawJPiece_3_bottomLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop drawJPiece_3_bottomLoop
+		drawJPiece_3_bottomLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop drawJPiece_3_bottomLoop
 
 		pop ax
 		pop cx
@@ -877,10 +881,10 @@ proc blackJPiece_3
 
 		add [y_coordinate], ax ; top square position
 		mov cx, 3 ; black bottom 3 pieces
-	blackJPiece_3_bottomLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop blackJPiece_3_bottomLoop
+		blackJPiece_3_bottomLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop blackJPiece_3_bottomLoop
 
 		pop ax
 		pop cx
@@ -908,10 +912,10 @@ proc drawJPiece_4
 		add [x_coordinate], ax ; right squares position
 		add [x_coordinate], ax
 		mov cx, 3 ; draw right 3 pieces
-	drawJPiece_4_leftLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop drawJPiece_4_leftLoop
+		drawJPiece_4_rightLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop drawJPiece_4_rightLoop
 
 		sub [y_coordinate], ax ; left square position
 		sub [x_coordinate], ax
@@ -943,10 +947,10 @@ proc blackJPiece_4
 		add [x_coordinate], ax ; right squares position
 		add [x_coordinate], ax
 		mov cx, 3 ; black right 3 pieces
-	blackJPiece_4_leftLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop blackJPiece_4_leftLoop
+		blackJPiece_4_rightLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop blackJPiece_4_rightLoop
 
 		sub [y_coordinate], ax ; left square position
 		sub [x_coordinate], ax
@@ -979,10 +983,10 @@ proc drawLPiece_1
 
 		sub [y_coordinate], ax
 		mov cx, 3 ; draw top 3 pieces
-	drawLPiece_1_topLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop drawLPiece_1_topLoop
+		drawLPiece_1_topLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop drawLPiece_1_topLoop
 
 		pop ax
 		pop cx
@@ -1011,10 +1015,10 @@ proc blackLPiece_1
 
 		sub [y_coordinate], ax
 		mov cx, 3 ; black top 3 pieces
-	blackLPiece_1_topLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop blackLPiece_1_topLoop
+		blackLPiece_1_topLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop blackLPiece_1_topLoop
 
 		pop ax
 		pop cx
@@ -1039,11 +1043,11 @@ proc drawLPiece_2
 		mov [main_colour], 27h
 		mov [border_colour], 15h
 
-		mov cx, 3 ; draw top 3 pieces
-	drawLPiece_2_topLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop drawLPiece_2_topLoop
+		mov cx, 3 ; draw left 3 pieces
+		drawLPiece_2_leftLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop drawLPiece_2_leftLoop
 
 		sub [y_coordinate], ax
 		add [x_coordinate], ax 
@@ -1072,11 +1076,11 @@ proc blackLPiece_2
 		mov [main_colour], 0
 		mov [border_colour], 0
 
-		mov cx, 3 ; black top 3 pieces
-	blackLPiece_2_topLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop blackLPiece_2_topLoop
+		mov cx, 3 ; black left 3 pieces
+		blackLPiece_2_leftLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop blackLPiece_2_leftLoop
 
 		sub [y_coordinate], ax
 		add [x_coordinate], ax 
@@ -1107,11 +1111,11 @@ proc drawLPiece_3
 
 		add [y_coordinate], ax
 		add [y_coordinate], ax
-		mov cx, 3 ; draw top 3 pieces
-	drawLPiece_3_topLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop drawLPiece_3_topLoop
+		mov cx, 3 ; draw bottom 3 pieces
+		drawLPiece_3_bottomLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop drawLPiece_3_bottomLoop
 
 		sub [y_coordinate], ax 
 		sub [x_coordinate], ax
@@ -1142,11 +1146,11 @@ proc blackLPiece_3
 
 		add [y_coordinate], ax
 		add [y_coordinate], ax
-		mov cx, 3 ; black top 3 pieces
-	blackLPiece_3_topLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop blackLPiece_3_topLoop
+		mov cx, 3 ; black bottom 3 pieces
+		blackLPiece_3_bottomLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop blackLPiece_3_bottomLoop
 
 		sub [y_coordinate], ax 
 		sub [x_coordinate], ax
@@ -1179,11 +1183,11 @@ proc drawLPiece_4
 		call drawsquare ; draw bottom square
 
 		add [x_coordinate], ax
-		mov cx, 3 ; draw top 4 pieces
-	drawLPiece_4_topLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop drawLPiece_4_topLoop
+		mov cx, 3 ; draw right 4 pieces
+		drawLPiece_4_rightLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop drawLPiece_4_rightLoop
 
 		pop ax
 		pop cx
@@ -1212,11 +1216,11 @@ proc blackLPiece_4
 		call drawsquare ; black bottom square
 
 		add [x_coordinate], ax
-		mov cx, 3 ; draw top 4 pieces
-	blackLPiece_4_topLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop blackLPiece_4_topLoop
+		mov cx, 3 ; draw right 4 pieces
+		blackLPiece_4_rightLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop blackLPiece_4_rightLoop
 
 		pop ax
 		pop cx
@@ -1242,10 +1246,10 @@ proc drawIPiece_1
 
 		add [y_coordinate], ax
 		mov cx, 4 ; draw line
-	drawIPiece_1_bottomLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop drawIPiece_1_bottomLoop
+		drawIPiece_1_bottomLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop drawIPiece_1_bottomLoop
 
 		pop ax
 		pop cx
@@ -1271,10 +1275,10 @@ proc blackIPiece_1
 
 		add [y_coordinate], ax
 		mov cx, 4 ; black line
-	blackIPiece_1_bottomLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop blackIPiece_1_bottomLoop
+		blackIPiece_1_bottomLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop blackIPiece_1_bottomLoop
 
 		pop ax
 		pop cx
@@ -1289,10 +1293,10 @@ proc drawIPiece_2
 		push cx
 		push ax
 		
-		;  O
-		;  O
-		;  O
-		;  O
+		; O
+		; O
+		; O
+		; O
 		
 		mov [light_colour], 0ffh ; cyan
 		mov [main_colour], 0feh
@@ -1302,10 +1306,10 @@ proc drawIPiece_2
 
 		add [x_coordinate], ax
 		mov cx, 4 ; draw line
-	drawIPiece_2_bottomLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop drawIPiece_2_bottomLoop
+		drawIPiece_2_leftLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop drawIPiece_2_leftLoop
 
 		pop ax
 		pop cx
@@ -1320,10 +1324,10 @@ proc blackIPiece_2
 		push cx
 		push ax
 		
-		;  O
-		;  O
-		;  O
-		;  O
+		; O
+		; O
+		; O
+		; O
 		
 		mov [light_colour], 0 ; black
 		mov [main_colour], 0
@@ -1333,10 +1337,10 @@ proc blackIPiece_2
 
 		add [x_coordinate], ax
 		mov cx, 4 ; black line
-	blackIPiece_2_bottomLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop blackIPiece_2_bottomLoop
+		blackIPiece_2_leftLoop:
+			call drawsquare
+			add [y_coordinate], ax ; move to next
+			loop blackIPiece_2_leftLoop
 
 		pop ax
 		pop cx
@@ -1364,10 +1368,10 @@ proc drawIPiece_3
 		add [y_coordinate], ax
 		add [y_coordinate], ax
 		mov cx, 4 ; draw line
-	drawIPiece_3_bottomLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop drawIPiece_3_bottomLoop
+		drawIPiece_3_bottomLoop:
+			call drawsquare
+			add [x_coordinate], ax ; move to next
+			loop drawIPiece_3_bottomLoop
 
 		pop ax
 		pop cx
@@ -1375,101 +1379,6 @@ proc drawIPiece_3
 		pop [x_coordinate]
 		ret
 endp drawIPiece_3
-
-proc blackIPiece_3
-		push [x_coordinate]
-		push [y_coordinate]
-		push cx
-		push ax
-		
-		;  
-		;  
-		; OOOO
-		
-		mov [light_colour], 0 ; black
-		mov [main_colour], 0
-		mov [border_colour], 0
-		
-		mov ax, [square_size] ; mov square size to a register
-
-		add [y_coordinate], ax
-		add [y_coordinate], ax
-		mov cx, 4 ; black line
-	blackIPiece_3_bottomLoop:
-		call drawsquare
-		add [x_coordinate], ax ; move to next
-		loop blackIPiece_3_bottomLoop
-
-		pop ax
-		pop cx
-		pop [y_coordinate]
-		pop [x_coordinate]
-		ret
-endp blackIPiece_3
-
-proc drawIPiece_4
-		push [x_coordinate]
-		push [y_coordinate]
-		push cx
-		push ax
-		
-		;   O
-		;   O
-		;   O
-		;   O
-		
-		mov [light_colour], 0ffh ; cyan
-		mov [main_colour], 0feh
-		mov [border_colour], 6h
-		
-		mov ax, [square_size] ; mov square size to a register
-
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		mov cx, 4 ; draw line
-	drawIPiece_4_bottomLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop drawIPiece_4_bottomLoop
-
-		pop ax
-		pop cx
-		pop [y_coordinate]
-		pop [x_coordinate]
-		ret
-endp drawIPiece_4
-
-proc blackIPiece_4
-		push [x_coordinate]
-		push [y_coordinate]
-		push cx
-		push ax
-		
-		;   O
-		;   O
-		;   O
-		;   O
-		
-		mov [light_colour], 0 ; black
-		mov [main_colour], 0
-		mov [border_colour], 0
-		
-		mov ax, [square_size] ; mov square size to a register
-
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		mov cx, 4 ; black line
-	blackIPiece_4_bottomLoop:
-		call drawsquare
-		add [y_coordinate], ax ; move to next
-		loop blackIPiece_4_bottomLoop
-
-		pop ax
-		pop cx
-		pop [y_coordinate]
-		pop [x_coordinate]
-		ret
-endp blackIPiece_4
 
 proc drawSPiece_1
 		push [x_coordinate]
@@ -1586,128 +1495,6 @@ proc blackSPiece_2
 		pop [x_coordinate]
 		ret
 endp blackSPiece_2
-
-proc drawSPiece_3
-		push [x_coordinate]
-		push [y_coordinate]
-		push ax
-		
-		;    
-		;  OO 
-		; OO 
-		
-		mov [light_colour], 0bdh ; greens
-		mov [main_colour], 38h
-		mov [border_colour], 22h
-		
-		mov ax, [square_size] ; mov square size to a register
-
-		add [y_coordinate], ax
-		add [y_coordinate], ax
-		call drawsquare
-		add [x_coordinate], ax
-		call drawsquare
-		sub [y_coordinate], ax
-		call drawsquare
-		add [x_coordinate], ax 
-		call drawsquare
-
-		pop ax
-		pop [y_coordinate]
-		pop [x_coordinate]
-		ret
-endp drawSPiece_3
-
-proc blackSPiece_3
-		push [x_coordinate]
-		push [y_coordinate]
-		push ax
-		
-		;    
-		;  OO 
-		; OO 
-		
-		mov [light_colour], 0h ; black
-		mov [main_colour], 0h
-		mov [border_colour], 0h
-		
-		mov ax, [square_size] ; mov square size to a register
-
-		add [y_coordinate], ax
-		add [y_coordinate], ax
-		call drawsquare
-		add [x_coordinate], ax
-		call drawsquare
-		sub [y_coordinate], ax
-		call drawsquare
-		add [x_coordinate], ax 
-		call drawsquare
-
-		pop ax
-		pop [y_coordinate]
-		pop [x_coordinate]
-		ret
-endp blackSPiece_3
-
-proc drawSPiece_4
-		push [x_coordinate]
-		push [y_coordinate]
-		push ax
-		
-		;  O  
-		;  OO 
-		;   O
-		
-		mov [light_colour], 0bdh ; greens
-		mov [main_colour], 38h
-		mov [border_colour], 22h
-		
-		mov ax, [square_size] ; mov square size to a register
-
-		add [x_coordinate], ax
-		call drawsquare
-		add [y_coordinate], ax
-		call drawsquare
-		add [x_coordinate], ax
-		call drawsquare
-		add [y_coordinate], ax 
-		call drawsquare
-
-		pop ax
-		pop [y_coordinate]
-		pop [x_coordinate]
-		ret
-endp drawSPiece_4
-
-proc blackSPiece_4
-		push [x_coordinate]
-		push [y_coordinate]
-		push ax
-		
-		;  O  
-		;  OO 
-		;   O
-		
-		mov [light_colour], 0h ; black
-		mov [main_colour], 0h
-		mov [border_colour], 0h
-		
-		mov ax, [square_size] ; mov square size to a register
-
-		add [x_coordinate], ax
-		call drawsquare
-		add [y_coordinate], ax
-		call drawsquare
-		add [x_coordinate], ax
-		call drawsquare
-		add [y_coordinate], ax 
-		call drawsquare
-
-		pop ax
-		pop [y_coordinate]
-		pop [x_coordinate]
-		ret
-endp blackSPiece_4
 
 proc drawZPiece_1
 		push [x_coordinate]
@@ -1939,17 +1726,17 @@ proc generate_last_7_queue
 
 		generate_last_7_set:
 		
-		mov [bx+si], ax
-		inc ax
+		mov [bx+si], ax ; when the spot is avaliable, put a piece in it
+		inc ax ; next piece
 
-		cmp [rand_num], 0
-		je generate_last_7_chane_min
+		cmp [rand_num], 0 ; if the chosen spot is the lowest avaliable spot, change the minimum to the next spot
+		je generate_last_7_change_min
 
 		loop generate_last_7_loop
 
 		ret
 
-		generate_last_7_chane_min:
+		generate_last_7_change_min:
 			add [min_queue_last_7], 2
 			
 			loop generate_last_7_loop
@@ -2055,11 +1842,11 @@ proc rotate_left
 		sub [x_coordinate], ax 
 		sub [x_coordinate], ax 
 
-		call blackZPiece_2 ; delete fourth position
+		call blackZPiece_2 ; delete first position
 		add [y_coordinate], ax
-		call drawzPiece_1 ; draw first position
-		jmp rotate_left_end
+		call drawzPiece_1 ; draw second position
 		sub [y_coordinate], ax
+		jmp rotate_left_end
 
 	rotate_left_z_draw_4:
 		add [x_coordinate], ax 
@@ -2078,10 +1865,10 @@ proc rotate_left
 		sub [x_coordinate], ax 
 
 		add [y_coordinate], ax
-		call blackZPiece_1 ; delete fourth position
+		call blackZPiece_1 ; delete third position
 		sub [y_coordinate], ax
 		add [x_coordinate], ax
-		call drawzPiece_2 ; draw first position
+		call drawzPiece_2 ; draw fourth position
 		sub [x_coordinate], ax
 		jmp rotate_left_end
 
@@ -2120,7 +1907,9 @@ proc rotate_left
 		sub [x_coordinate], ax ; return to cursor's position
 		sub [x_coordinate], ax
 
-		call blackSPiece_4 ; delete fourth position
+		add [x_coordinate], ax
+		call blackSPiece_2 ; delete fourth position
+		sub [x_coordinate], ax
 		call drawSPiece_1 ; draw first position
 		jmp rotate_left_end
 
@@ -2163,7 +1952,9 @@ proc rotate_left
 		sub [y_coordinate], ax
 
 		call blackSPiece_2 ; delete second position
-		call drawSPiece_3 ; draw third position
+		add [y_coordinate], ax
+		call drawSPiece_1 ; draw third position
+		sub [y_coordinate], ax
 		jmp rotate_left_end
 
 	rotate_left_s_draw_4:
@@ -2184,8 +1975,12 @@ proc rotate_left
 		sub [y_coordinate], ax
 		sub [y_coordinate], ax
 
-		call blackSPiece_3 ; delete third position
-		call drawSPiece_4 ; draw fourth position
+		add [y_coordinate], ax
+		call blackSPiece_1 ; delete third position
+		sub [y_coordinate], ax
+		add [x_coordinate], ax
+		call drawSPiece_2 ; draw fourth position
+		sub [x_coordinate], ax
 		jmp rotate_left_end
 		
 	rotate_left_i: ; i-piece
@@ -2229,7 +2024,9 @@ proc rotate_left
 		sub [x_coordinate], ax
 		sub [x_coordinate], ax
 
-		call blackipiece_4 ; delete fourth position
+		add [x_coordinate], ax
+		call blackipiece_2 ; delete fourth position
+		sub [x_coordinate], ax
 		call drawipiece_1 ; draw first position
 		jmp rotate_left_end
 
@@ -2255,8 +2052,8 @@ proc rotate_left
 		sub [y_coordinate], ax
 		sub [y_coordinate], ax
 
-		call blackipiece_1 ; delete fourth position
-		call drawipiece_2 ; draw first position
+		call blackipiece_1 ; delete first position
+		call drawipiece_2 ; draw second position
 		jmp rotate_left_end
 
 	rotate_left_i_draw_3:
@@ -2283,8 +2080,10 @@ proc rotate_left
 		sub [y_coordinate], ax
 		sub [y_coordinate], ax
 
-		call blackipiece_2 ; delete fourth position
-		call drawipiece_3 ; draw first position
+		call blackipiece_2 ; delete second position
+		add [y_coordinate], ax
+		call drawipiece_1 ; draw third position
+		sub [y_coordinate], ax
 		jmp rotate_left_end
 
 	rotate_left_i_draw_4:
@@ -2311,8 +2110,12 @@ proc rotate_left
 		sub [y_coordinate], ax
 		sub [y_coordinate], ax
 
-		call blackipiece_3 ; delete fourth position
-		call drawipiece_4 ; draw first position
+		add [y_coordinate], ax
+		call blackipiece_1 ; delete third position
+		sub [y_coordinate], ax
+		add [x_coordinate], ax
+		call drawipiece_2 ; draw fourth position
+		sub [x_coordinate], ax
 		jmp rotate_left_end
 
 	rotate_left_l: ; l-piece
@@ -2651,7 +2454,7 @@ proc rotate_right
 		sub [x_coordinate], ax
 		sub [y_coordinate], ax
 
-		call blackzPiece_2 ; delete fourth position
+		call blackzPiece_2 ; delete second position
 		call drawzPiece_1 ; draw first position
 		jmp rotate_right_end
 
@@ -2672,9 +2475,9 @@ proc rotate_right
 		sub [x_coordinate], ax ; return to cursor's position
 
 		add [y_coordinate], ax
-		call blackzPiece_1 ; delete fourth position
+		call blackzPiece_1 ; delete third position
 		sub [y_coordinate], ax
-		call drawzPiece_2 ; draw first position
+		call drawzPiece_2 ; draw second position
 		jmp rotate_right_end
 
 	rotate_right_z_draw_3:
@@ -2699,7 +2502,7 @@ proc rotate_right
 		call blackzPiece_2 ; delete fourth position
 		sub [x_coordinate], ax
 		add [y_coordinate], ax
-		call drawzPiece_1 ; draw first position
+		call drawzPiece_1 ; draw third position
 		sub [y_coordinate], ax
 		jmp rotate_right_end
 
@@ -2721,9 +2524,9 @@ proc rotate_right
 		sub [y_coordinate], ax
 		sub [y_coordinate], ax
 
-		call blackzPiece_1 ; delete fourth position
+		call blackzPiece_1 ; delete first position
 		add [x_coordinate], ax
-		call drawzPiece_2 ; draw first position
+		call drawzPiece_2 ; draw fourth position
 		sub [x_coordinate], ax
 		jmp rotate_right_end
 
@@ -2760,7 +2563,7 @@ proc rotate_right
 		sub [x_coordinate], ax ; return to cursor's position
 		sub [x_coordinate], ax
 
-		call blackSPiece_2 ; delete fourth position
+		call blackSPiece_2 ; delete second position
 		call drawSPiece_1 ; draw first position
 		jmp rotate_right_end
 
@@ -2776,8 +2579,10 @@ proc rotate_right
 
 		sub [y_coordinate], ax ; return to cursor's position
 
-		call blackSPiece_3 ; delete fourth position
-		call drawSPiece_2 ; draw first position
+		add [y_coordinate], ax
+		call blackSPiece_1 ; delete third position
+		sub [y_coordinate], ax
+		call drawSPiece_2 ; draw second position
 		jmp rotate_right_end
 
 	rotate_right_s_draw_3:
@@ -2796,8 +2601,12 @@ proc rotate_right
 		sub [y_coordinate], ax
 		sub [y_coordinate], ax
 
-		call blackSPiece_4 ; delete fourth position
-		call drawSPiece_3 ; draw first position
+		add [x_coordinate], ax
+		call blackSPiece_2 ; delete fourth position
+		sub [x_coordinate], ax
+		add [y_coordinate], ax
+		call drawSPiece_1 ; draw third position
+		sub [y_coordinate], ax
 		jmp rotate_right_end
 
 	rotate_right_s_draw_4:
@@ -2819,7 +2628,9 @@ proc rotate_right
 		sub [y_coordinate], ax
 
 		call blackSPiece_1 ; delete fourth position
-		call drawSPiece_4 ; draw first position
+		add [x_coordinate], ax
+		call drawSPiece_2 ; draw third position
+		sub [x_coordinate], ax
 		jmp rotate_right_end
 
 	rotate_right_i: ; i-piece
@@ -2861,7 +2672,7 @@ proc rotate_right
 		sub [x_coordinate], ax
 		sub [x_coordinate], ax
 
-		call blackipiece_2 ; delete fourth position
+		call blackipiece_2 ; delete second position
 		call drawipiece_1 ; draw first position
 		jmp rotate_right_end
 
@@ -2885,8 +2696,10 @@ proc rotate_right
 		sub [y_coordinate], ax
 		sub [y_coordinate], ax
 
-		call blackipiece_3 ; delete fourth position
-		call drawipiece_2 ; draw first position
+		add [y_coordinate], ax
+		call blackipiece_1 ; delete third position
+		sub [y_coordinate], ax
+		call drawipiece_2 ; draw second position
 		jmp rotate_right_end
 
 	rotate_right_i_draw_3:
@@ -2913,8 +2726,12 @@ proc rotate_right
 		sub [x_coordinate], ax
 		sub [x_coordinate], ax
 
-		call blackipiece_4 ; delete fourth position
-		call drawipiece_3 ; draw first position
+		add [x_coordinate], ax
+		call blackipiece_2 ; delete fourth position
+		sub [x_coordinate], ax
+		add [y_coordinate], ax
+		call drawipiece_1 ; draw third position
+		sub [y_coordinate], ax
 		jmp rotate_right_end
 
 	rotate_right_i_draw_4:
@@ -2941,8 +2758,10 @@ proc rotate_right
 		sub [x_coordinate], ax
 		sub [x_coordinate], ax
 
-		call blackipiece_1 ; delete fourth position
-		call drawipiece_4 ; draw first position
+		call blackipiece_1 ; delete first position
+		add [x_coordinate], ax
+		call drawipiece_2 ; draw fourth position
+		sub [x_coordinate], ax
 		jmp rotate_right_end
 
 	rotate_right_l: ; l-piece
@@ -3469,9 +3288,11 @@ proc move_left
 
 		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
 		
-		call blackSPiece_3 ; erase piece
+		add [y_coordinate], ax
+		call blackSPiece_1 ; erase piece
 		sub [x_coordinate], ax
-		call drawSPiece_3 ; redraw it one square left
+		call drawSPiece_1 ; redraw it one square left
+		sub [y_coordinate], ax
 
 		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_left_end
@@ -3498,9 +3319,11 @@ proc move_left
 
 		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
 		
-		call blackSPiece_4 ; erase piece
+		add [x_coordinate], ax
+		call blackSPiece_2 ; erase piece
 		sub [x_coordinate], ax
-		call drawSPiece_4 ; redraw it one square left
+		call drawSPiece_2 ; redraw it one square left
+		sub [x_coordinate], ax
 
 		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_left_end
@@ -3582,9 +3405,11 @@ proc move_left
 
 		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
 		
-		call blackipiece_3 ; erase piece
+		add [y_coordinate], ax
+		call blackipiece_1 ; erase piece
 		sub [x_coordinate], ax
-		call drawipiece_3 ; redraw it one square left
+		call drawipiece_1 ; redraw it one square left
+		sub [y_coordinate], ax
 
 		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_left_end
@@ -3617,9 +3442,11 @@ proc move_left
 
 		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
 		
-		call blackipiece_4 ; erase piece
+		add [x_coordinate], ax
+		call blackipiece_2 ; erase piece
 		sub [x_coordinate], ax
-		call drawipiece_4 ; redraw it one square left
+		call drawipiece_2 ; redraw it one square left
+		sub [x_coordinate], ax
 
 		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_left_end
@@ -4271,9 +4098,11 @@ proc move_right
 
 		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
 
-		call blackSPiece_3 ; erase piece
+		add [y_coordinate], ax
+		call blackSPiece_1 ; erase piece
 		add [x_coordinate], ax
-		call drawSPiece_3 ; redraw it one square right
+		call drawSPiece_1 ; redraw it one square right
+		sub [y_coordinate], ax
 
 		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_right_end
@@ -4303,9 +4132,11 @@ proc move_right
 
 		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
 
-		call blackSPiece_4 ; erase piece
 		add [x_coordinate], ax
-		call drawSPiece_4 ; redraw it one square right
+		call blackSPiece_2 ; erase piece
+		add [x_coordinate], ax
+		call drawSPiece_2 ; redraw it one square right
+		sub [x_coordinate], ax
 
 		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_right_end
@@ -4403,9 +4234,11 @@ proc move_right
 
 		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
 
-		call blackipiece_3 ; erase piece
+		add [y_coordinate], ax
+		call blackipiece_1 ; erase piece
 		add [x_coordinate], ax
-		call drawipiece_3 ; redraw it one square right
+		call drawipiece_1 ; redraw it one square right
+		sub [y_coordinate], ax
 
 		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_right_end
@@ -4442,9 +4275,11 @@ proc move_right
 
 		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
 
-		call blackipiece_4 ; erase piece
 		add [x_coordinate], ax
-		call drawipiece_4 ; redraw it one square right
+		call blackipiece_2 ; erase piece
+		add [x_coordinate], ax
+		call drawipiece_2 ; redraw it one square right
+		sub [x_coordinate], ax
 
 		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_right_end
@@ -5140,9 +4975,11 @@ proc move_down
 
 		pop [y_coordinate] ; momenteraly pop y_coordinate in order to permenantly change it
 
-		call blackSPiece_3 ; erase piece
 		add [y_coordinate], ax
-		call drawSPiece_3 ; redraw it one square down
+		call blackSPiece_1 ; erase piece
+		add [y_coordinate], ax
+		call drawSPiece_1 ; redraw it one square down
+		sub [y_coordinate], ax
 
 		push [y_coordinate] ; push y_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_down_end
@@ -5169,9 +5006,11 @@ proc move_down
 
 		pop [y_coordinate] ; momenteraly pop y_coordinate in order to permenantly change it
 
-		call blackSPiece_4 ; erase piece
+		add [x_coordinate], ax
+		call blackSPiece_2 ; erase piece
 		add [y_coordinate], ax
-		call drawSPiece_4 ; redraw it one square down
+		call drawSPiece_2 ; redraw it one square down
+		sub [x_coordinate], ax
 
 		push [y_coordinate] ; push y_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_down_end
@@ -5280,9 +5119,11 @@ proc move_down
 
 		pop [y_coordinate] ; momenteraly pop y_coordinate in order to permenantly change it
 
-		call blackipiece_3 ; erase piece
 		add [y_coordinate], ax
-		call drawipiece_3 ; redraw it one square down
+		call blackipiece_1 ; erase piece
+		add [y_coordinate], ax
+		call drawipiece_1 ; redraw it one square down
+		sub [y_coordinate], ax
 
 		push [y_coordinate] ; push y_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_down_end
@@ -5306,9 +5147,11 @@ proc move_down
 
 		pop [y_coordinate] ; momenteraly pop y_coordinate in order to permenantly change it
 
-		call blackipiece_4 ; erase piece
+		add [x_coordinate], ax
+		call blackipiece_2 ; erase piece
 		add [y_coordinate], ax
-		call drawipiece_4 ; redraw it one square down
+		call drawipiece_2 ; redraw it one square down
+		sub [x_coordinate], ax
 
 		push [y_coordinate] ; push y_coordinate back before jumping to the end to not mess up the pop at the end
 		jmp move_down_end
@@ -5864,6 +5707,8 @@ proc destroy_piece
 			ret
 	
 	destroy_i:
+		push ax
+		mov ax, [square_size]
 		cmp [current_piece_rotation], 1 
 		je destroy_i_1
 		cmp [current_piece_rotation], 2 
@@ -5875,18 +5720,30 @@ proc destroy_piece
 		ret
 		destroy_i_1:
 			call blackipiece_1
+			pop ax
 			ret
 		destroy_i_2:
 			call blackipiece_2
+			pop ax
 			ret
 		destroy_i_3:
-			call blackipiece_3
+			push ax
+			mov ax, [square_size]
+			add [y_coordinate], ax
+			call blackipiece_1
+			sub [y_coordinate], ax
+			pop ax
 			ret
 		destroy_i_4:
-			call blackipiece_4
+			add [x_coordinate], ax
+			call blackipiece_2
+			sub [x_coordinate], ax
+			pop ax
 			ret
 	
 	destroy_s:
+		push ax
+		mov ax, [square_size]
 		cmp [current_piece_rotation], 1 
 		je destroy_s_1
 		cmp [current_piece_rotation], 2 
@@ -5898,18 +5755,28 @@ proc destroy_piece
 		ret
 		destroy_s_1:
 			call blackspiece_1
+			pop ax
 			ret
 		destroy_s_2:
 			call blackspiece_2
+			pop ax
 			ret
 		destroy_s_3:
-			call blackspiece_3
+			add [y_coordinate], ax
+			call blackspiece_1
+			sub [y_coordinate], ax
+			pop ax
 			ret
 		destroy_s_4:
-			call blackspiece_4
+			add [x_coordinate], ax
+			call blackspiece_2
+			sub [x_coordinate], ax
+			pop ax
 			ret
 	
 	destroy_z:
+		push ax
+		mov ax, [square_size]
 		cmp [current_piece_rotation], 1 
 		je destroy_z_1
 		cmp [current_piece_rotation], 2 
@@ -5921,27 +5788,23 @@ proc destroy_piece
 		ret
 		destroy_z_1:
 			call blackzpiece_1
+			pop ax
 			ret
 		destroy_z_2:
 			call blackzpiece_2
+			pop ax
 			ret
 		destroy_z_3:
-			push [y_coordinate]
-			push ax
-			mov ax, [square_size]
 			add [y_coordinate], ax
 			call blackzpiece_1
+			sub [y_coordinate], ax
 			pop ax
-			pop [y_coordinate]
 			ret
 		destroy_z_4:
-			push [x_coordinate]
-			push ax
-			mov ax, [square_size]
 			add [x_coordinate], ax
 			call blackzpiece_2
+			sub [x_coordinate], ax
 			pop ax
-			pop [x_coordinate]
 			ret
 endp destroy_piece
 
@@ -6324,7 +6187,7 @@ proc inc_score_first_digit
 	pusha
 	mov bx, offset score
 	mov si, 9
-	mov cx, 9
+	mov cx, 10
 	inc_digit_1:
 		inc [bx+si]
 		mov dl, 9
@@ -6345,7 +6208,7 @@ proc inc_score_second_digit
 	pusha
 	mov bx, offset score
 	mov si, 8
-	mov cx, 8
+	mov cx, 9
 	inc_digit_2:
 		inc [bx+si]
 		mov dl, 9
@@ -6366,7 +6229,7 @@ proc inc_score_third_digit
 	pusha
 	mov bx, offset score
 	mov si, 7
-	mov cx, 7
+	mov cx, 8
 	inc_digit_3:
 		inc [bx+si]
 		mov dl, 9
@@ -6696,7 +6559,7 @@ proc inc_cleared_lines
 	pusha
 	mov bx, offset lines_cleared_printable
 	mov si, 2
-	mov cx, 2
+	mov cx, 3
 	inc_digit_cleared_lines:
 		inc [bx+si]
 		mov dl, 9
