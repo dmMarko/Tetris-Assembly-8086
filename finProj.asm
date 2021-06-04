@@ -57,8 +57,6 @@ min_queue_last_7 db 14 ; when calculating the las 7 spots in the queue, when the
 
 queue_iteration db 0
 
-x_column db 3
-y_row db 13
 character db '2'
 char_colour db 2
 
@@ -206,16 +204,19 @@ proc waitForKeyPress
 endp waitForKeyPress
 
 proc drawPixel
+	push bp
+	mov bp,sp
 	pusha
 	; print pixel interrupt
 	xor bh, bh ; bh = 0
 	mov cx, [x_coordinate] ; x coord
 	mov dx, [y_coordinate] ; y coord
-	mov ax, [colour] ; colour
+	mov ax, [bp+4] ; colour
 	mov ah, 0ch
 	int 10h
 	popa
-	ret
+	pop bp
+	ret 2
 endp drawPixel
 
 proc readPixel
@@ -240,16 +241,21 @@ proc delay
 	ret
 endp delay
 
-proc Cursor_Location ;Place the cursor on the screen by player/level cords
+local_x equ [bp+6]
+local_y equ [bp+4]
+proc Cursor_Location ;Place the cursor on the screen by bp
+	push bp
+	mov bp,sp
 	pusha
 	; set cursor location
 	mov bh, 0
-	mov dh, [y_row] ; in row
-	mov dl, [x_column] ; in column
+	mov dl, local_x ; in column/x
+	mov dh, local_y ; in row/y
 	mov ah, 2
 	int 10h
 	popa
-	ret
+	pop bp
+	ret 4
 endp Cursor_Location
 
 proc Draw_Char
@@ -279,8 +285,6 @@ proc drawSquare
 		; draw a basic square using the given colours
 
 		; outer square
-		mov cx, [main_colour] ; set colour to main colour
-		mov [colour], cx
 		push [y_coordinate]
 		mov cx, [square_size] ; set column loop counter
 		drawSquare_column:
@@ -289,6 +293,7 @@ proc drawSquare
 			
 			mov cx, [square_size] ; set row loop counter
 			drawSquare_row:
+				push [main_colour]
 				call drawpixel ; draw pixel
 				inc [x_coordinate] 
 				loop drawsquare_row ; loop for the whole row 
@@ -303,22 +308,19 @@ proc drawSquare
 		;border
 		push [x_coordinate]
 		push [y_coordinate] 
-		mov cx, [light_colour]
-		mov [colour], cx ; set colour to light colour
 		mov cx, [square_size]
 		drawSquare_border_top:
+			push [light_colour]
 			call drawpixel ; draw pixel
 			inc [x_coordinate] 
 			loop drawsquare_border_top ; loop for the whole row 
 		dec [x_coordinate]
 		inc [y_coordinate]
 
-		mov cx, [border_colour] ; set colour to border colour
-		mov [colour], cx
-
 		mov cx, [square_size]
 		dec cx
 		drawSquare_border_right:
+			push [border_colour]
 			call drawpixel ; draw pixel
 			inc [y_coordinate] 
 			loop drawsquare_border_right ; loop for the whole column 
@@ -326,18 +328,17 @@ proc drawSquare
 
 		mov cx, [square_size]
 		drawSquare_border_bottom:
+			push [border_colour]
 			call drawpixel ; draw pixel
 			dec [x_coordinate] 
 			loop drawsquare_border_bottom ; loop for the whole row 
 		inc [x_coordinate]
 		dec [y_coordinate]
 
-		mov cx, [light_colour]
-		mov [colour], cx ; set colour to white
-
 		mov cx, [square_size]
 		dec cx
 		drawSquare_border_left:
+			push [light_colour]
 			call drawpixel ; draw pixel
 			dec [y_coordinate] 
 			loop drawsquare_border_left ; loop for the whole column 
@@ -6669,18 +6670,18 @@ game_start:
     call CopyPal
     call CopyBitmap
 
-	mov [x_column], 3
-	mov [y_row], 15
+	push 3 ;x coordinate
+	push 15 ;y coordinate
 	call cursor_location
 	call draw_score
 
-	mov [x_column], 11
-	mov [y_row], 13
+	push 11 ;x coordinate
+	push 13 ;y coordinate
 	call cursor_location
 	call draw_level
 
-	mov [x_column], 10
-	mov [y_row], 17
+	push 10 ;x coordinate
+	push 17 ;y coordinate
 	call cursor_location
 	call draw_cleared_lines
 
@@ -6728,15 +6729,15 @@ mainGameLoop:
 			pop cx
 		loop clearing_row_mechanism
 
-		mov [x_column], 10
-		mov [y_row], 17
+		push 10 ;x coordinate
+		push 17 ;y coordinate
 		call cursor_location
 		call draw_cleared_lines
 
 		call calculate_level
 
-		mov [x_column], 11
-		mov [y_row], 13
+		push 11 ;x coordinate
+		push 13 ;y coordinate
 		call cursor_location
 		call draw_level
 
@@ -6762,8 +6763,8 @@ mainGameLoop:
 				call inc_score_second_digit
 				loop cleared_1_rows_score_loop
 
-			mov [x_column], 3
-			mov [y_row], 15
+			push 3 ;x coordinate
+			push 15 ;y coordinate
 			call cursor_location
 			call draw_score
 			jmp next_piece
@@ -6779,8 +6780,8 @@ mainGameLoop:
 				call inc_score_third_digit
 				loop cleared_2_rows_score_loop
 
-			mov [x_column], 3
-			mov [y_row], 15
+			push 3 ;x coordinate
+			push 15 ;y coordinate
 			call cursor_location
 			call draw_score
 			jmp next_piece
@@ -6795,8 +6796,8 @@ mainGameLoop:
 				call inc_score_third_digit
 				loop cleared_3_rows_score_loop
 
-			mov [x_column], 3
-			mov [y_row], 15
+			push 3 ;x coordinate
+			push 15 ;y coordinate
 			call cursor_location
 			call draw_score
 			jmp next_piece
@@ -6811,8 +6812,8 @@ mainGameLoop:
 				call inc_score_third_digit
 				loop cleared_4_rows_score_loop
 
-			mov [x_column], 3
-			mov [y_row], 15
+			push 3 ;x coordinate
+			push 15 ;y coordinate
 			call cursor_location
 			call draw_score
 			jmp next_piece
@@ -6959,8 +6960,8 @@ mainGameLoop:
 
 			fast_dropping:
 				call inc_score_first_digit
-				mov [x_column], 3
-				mov [y_row], 15
+				push 3 ;x coordinate
+				push 15 ;y coordinate
 				call cursor_location
 				call draw_score
 				mov cx, 1
@@ -7009,18 +7010,18 @@ end_game:
     call CopyPal
     call CopyBitmap
 
-	mov [x_column], 15
-	mov [y_row], 17
+	push 15 ;x coordinate
+	push 17 ;y coordinate
 	call cursor_location
 	call draw_score
 
-	mov [x_column], 23
-	mov [y_row], 15
+	push 23 ;x coordinate
+	push 15 ;y coordinate
 	call cursor_location
 	call draw_level
 
-	mov [x_column], 22
-	mov [y_row], 19
+	push 22 ;x coordinate
+	push 19 ;y coordinate
 	call cursor_location
 	call draw_cleared_lines
 
