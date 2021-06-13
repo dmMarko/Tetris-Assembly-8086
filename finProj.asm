@@ -23,42 +23,38 @@ ErrorMsg db 'Error', 13, 10,'$'
 
 ; -------- game variables ---------
 
-x_coordinate dw 100
-y_coordinate dw 100
-colour dw 4 ; colour from code
-pixelColour db 0 ; colour from screen
+x_coordinate dw ?
+y_coordinate dw ?
+colour dw ? ; colour from code
+pixelColour db ? ; colour from screen
 
-pressedKey db 0
+pressedKey db ?
 
 square_size dw 8
-main_colour dw 0ch ; block colour - unique for each piece
-border_colour dw 4 ; block border colour - unique for each piece
-light_colour dw 0Fh ; light colour - unique for each piece
+main_colour dw ? ; block colour - unique for each piece
+border_colour dw ? ; block border colour - unique for each piece
+light_colour dw ? ; light colour - unique for each piece
 
-current_piece dw 6 ; 0 = t-piece, 1 = o-piece, 2 = j-piece, 3 = l-piece, 4 = i-piece, 5 = s-piece, 6 = z-piece
+current_piece dw ? ; 0 = t-piece, 1 = o-piece, 2 = j-piece, 3 = l-piece, 4 = i-piece, 5 = s-piece, 6 = z-piece
 current_piece_rotation dw 1 ; rotation of the piece, the number of the postion
-move_down_speed dw 9000h ; speed of moving down, mostly the same, but shorter when sped up
+move_down_speed dw 7fffh ; speed of moving down, mostly the same, but shorter when sped up
+default_speed dw 7fffh
 
 move_down_failed db 0 ; boolean, whether moving down failed, 0 = not failed, 1 = failed
 up_key_pressed db 0 ; boolean, whether up key was pressed, 0 = not, 1 = yes
 
-line dw 0 ; the number of the line
+line dw 0 ; the number of a line
 
 game_over db 0 ; boolean, 0 = no game over, 1 = game is over
 
-held_piece dw 100 ; the held piece big
+held_piece dw 100 ; the held piece
 held_this_turn db 0 ; boolean, 0 = didn't hold a piece this turn, 1 = held already this turn
 
 queue dw 14 dup (?)
-
 min_queue_last_7 db 14 ; when calculating the las 7 spots in the queue, when the first spot is taken, 
 					   ; the first is now moved to the second spot
 					   ; in order to not try again to use the first one
-
 queue_iteration db 0
-
-character db '2'
-char_colour db 2
 
 score db 10 dup(0), "$"
 lines_cleared_this_turn db 0
@@ -67,7 +63,6 @@ level db 2 dup(0), "$"
 level_num db 0
 lines_cleared dw 0
 lines_cleared_printable db 3 dup(0), "$"
-default_speed dw 750h
 
 ; -------- rand variables ---------
 modulus dw 6075
@@ -80,7 +75,7 @@ rand_num db ?
 
 CODESEG
 ; ________BMP reader________
-proc OpenFile
+proc OpenBitmap
     ; Open file
     mov ah, 3Dh
     xor al, al
@@ -89,34 +84,27 @@ proc OpenFile
     jc openerror
     mov [filehandle], ax
 
-    ret
+    jmp readheader
     openerror:
     mov dx, offset ErrorMsg
     mov ah, 9h
     int 21h
-    ret
-endp OpenFile
+	ret
 
-proc ReadHeader
+	readHeader:
     ; Read BMP file header, 54 bytes
     mov ah,3fh
     mov bx, [filehandle]
     mov cx,54
     mov dx,offset Header
     int 21h
-    ret
-endp ReadHeader
-
-proc ReadPalette
+    
     ; Read BMP file color palette, 256 colors * 4 bytes (400h)
     mov ah,3fh
     mov cx,400h
     mov dx,offset Palette
     int 21h
-    ret
-endp ReadPalette
-
-proc CopyPal
+    
     ; Copy the colors palette to the video memory
     ; The number of the first color should be sent to port 3C8h
     ; The palette is sent to port 3C9h
@@ -144,10 +132,7 @@ proc CopyPal
     ; (There is a null chr. after every color.)
 
     loop PalLoop
-    ret
-endp CopyPal
-
-proc CopyBitmap
+    
     ; BMP graphics are saved upside-down.
     ; Read the graphic line by line (200 lines in VGA format),
     ; displaying the lines from bottom to top.
@@ -181,7 +166,7 @@ proc CopyBitmap
     pop cx
     loop PrintBMPLoop
     ret
-endp CopyBitmap
+endp OpenBitmap
 
 ; ______int shortcuts_______
 proc enterGraphicMode
@@ -257,19 +242,6 @@ proc Cursor_Location ;Place the cursor on the screen by bp
 	pop bp
 	ret 4
 endp Cursor_Location
-
-proc Draw_Char
-	pusha
-	; print a single character to screen
-	mov ah, 9
-	mov al, [character] ;AL = character to display
-	mov bh, 0h ;BH=Page
-	mov bl, [char_colour] ; BL = Foreground
-	mov cx, 1 ; number of times to write character
-	int 10h ; Bois -&gt; show the character
-	popa
-	ret
-endp Draw_Char
 
 proc Print_Text ;print text in dx
 	pusha
@@ -1346,37 +1318,6 @@ proc blackIPiece_2
 		pop [x_coordinate]
 		ret
 endp blackIPiece_2
-
-proc drawIPiece_3
-		push [x_coordinate]
-		push [y_coordinate]
-		push cx
-		push ax
-		
-		;  
-		;  
-		; OOOO
-		
-		mov [light_colour], 0ffh ; cyan
-		mov [main_colour], 0feh
-		mov [border_colour], 6h
-		
-		mov ax, [square_size] ; mov square size to a register
-
-		add [y_coordinate], ax
-		add [y_coordinate], ax
-		mov cx, 4 ; draw line
-		drawIPiece_3_bottomLoop:
-			call drawsquare
-			add [x_coordinate], ax ; move to next
-			loop drawIPiece_3_bottomLoop
-
-		pop ax
-		pop cx
-		pop [y_coordinate]
-		pop [x_coordinate]
-		ret
-endp drawIPiece_3
 
 proc drawSPiece_1
 		push [x_coordinate]
@@ -3039,1662 +2980,1662 @@ proc rotate_right
 		ret
 endp rotate_right
 
-proc move_left
-		push ax
-		push [y_coordinate]
-		push [x_coordinate]
-		
-		mov ax, [square_size] ; square size in a register
-
-		cmp [current_piece], 0
-		je move_left_t ; if t-piece
-		cmp [current_piece], 1
-		je move_left_o ; if o-piece
-		cmp [current_piece], 2
-		je move_left_j ; if j-piece
-		cmp [current_piece], 3
-		je move_left_l ; if l-piece
-		cmp [current_piece], 4
-		je move_left_i ; if i-piece
-		cmp [current_piece], 5
-		je move_left_s ; if s-piece
-		cmp [current_piece], 6
-		je move_left_z ; if z-piece
-		jmp move_left_end
-
-	move_left_o:
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor position
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackopiece ; erase piece
-		sub [x_coordinate], ax
-		call drawopiece ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_z:
-		cmp [current_piece_rotation], 1 ; different actions based on rotation
-		je move_left_z_1
-		cmp [current_piece_rotation], 2
-		je move_left_z_2
-		cmp [current_piece_rotation], 3
-		je move_left_z_3
-		cmp [current_piece_rotation], 4
-		je move_left_z_4
-		jmp move_left_end
-
-	move_left_z_1:
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		add [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		sub [x_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blackZPiece_1 ; erase piece
-		sub [x_coordinate], ax
-		call drawZPiece_1 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_z_2:
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		add [x_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blackZPiece_2 ; erase piece
-		sub [x_coordinate], ax
-		call drawZPiece_2 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_z_3:
-		add [y_coordinate], ax
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		sub [x_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		add [y_coordinate], ax
-		call blackZPiece_1 ; erase piece
-		sub [x_coordinate], ax
-		call drawZPiece_1 ; redraw it one square left
-		sub [y_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_z_4:
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		add [x_coordinate], ax
-		call blackZPiece_2 ; erase piece
-		sub [x_coordinate], ax
-		call drawZPiece_2 ; redraw it one square left
-		sub [x_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_s:
-		cmp [current_piece_rotation], 1 ; different actions based on rotation
-		je move_left_s_1
-		cmp [current_piece_rotation], 2
-		je move_left_s_2
-		cmp [current_piece_rotation], 3
-		je move_left_s_3
-		cmp [current_piece_rotation], 4
-		je move_left_s_4
-		jmp move_left_end
-
-	move_left_s_1:
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [x_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blackSPiece_1 ; erase piece
-		sub [x_coordinate], ax
-		call drawSPiece_1 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_s_2:
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blackSPiece_2 ; erase piece
-		sub [x_coordinate], ax
-		call drawSPiece_2 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_s_3:
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-		add [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		add [y_coordinate], ax
-		call blackSPiece_1 ; erase piece
-		sub [x_coordinate], ax
-		call drawSPiece_1 ; redraw it one square left
-		sub [y_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_s_4:
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		add [x_coordinate], ax
-		call blackSPiece_2 ; erase piece
-		sub [x_coordinate], ax
-		call drawSPiece_2 ; redraw it one square left
-		sub [x_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_i:
-		cmp [current_piece_rotation], 1 ; different actions based on rotation
-		je move_left_i_1
-		cmp [current_piece_rotation], 2
-		je move_left_i_2
-		cmp [current_piece_rotation], 3
-		je move_left_i_3
-		cmp [current_piece_rotation], 4
-		je move_left_i_4
-		jmp move_left_end
-
-	move_left_i_1:
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [x_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blackipiece_1 ; erase piece
-		sub [x_coordinate], ax
-		call drawipiece_1 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_i_2:
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-		
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 4
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blackipiece_2 ; erase piece
-		sub [x_coordinate], ax
-		call drawipiece_2 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_i_3:
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [x_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		add [y_coordinate], ax
-		call blackipiece_1 ; erase piece
-		sub [x_coordinate], ax
-		call drawipiece_1 ; redraw it one square left
-		sub [y_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_i_4:
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-		
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 4
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		add [x_coordinate], ax
-		call blackipiece_2 ; erase piece
-		sub [x_coordinate], ax
-		call drawipiece_2 ; redraw it one square left
-		sub [x_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_l:
-		cmp [current_piece_rotation], 1 ; different actions based on rotation
-		je move_left_l_1
-		cmp [current_piece_rotation], 2
-		je move_left_l_2
-		cmp [current_piece_rotation], 3
-		je move_left_l_3
-		cmp [current_piece_rotation], 4
-		je move_left_l_4
-		jmp move_left_end
-
-	move_left_l_1:
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-		
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		; l-piece 1st position has no third row so there's no point in checking it
-
-		sub [y_coordinate], ax ; return to cursor's position
-		add [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blacklpiece_1 ; erase piece
-		sub [x_coordinate], ax
-		call drawlpiece_1 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_l_2:
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-		
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-		add [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blacklpiece_2 ; erase piece
-		sub [x_coordinate], ax
-		call drawlpiece_2 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_l_3:
-		; l-piece 1st position has no first row so there's no point in checking it
-		
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-		add [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blacklpiece_3 ; erase piece
-		sub [x_coordinate], ax
-		call drawlpiece_3 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_l_4:
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blacklpiece_4 ; erase piece
-		sub [x_coordinate], ax
-		call drawlpiece_4 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_j:
-		cmp [current_piece_rotation], 1 ; different actions based on rotation
-		je move_left_j_1
-		cmp [current_piece_rotation], 2
-		je move_left_j_2
-		cmp [current_piece_rotation], 3
-		je move_left_j_3
-		cmp [current_piece_rotation], 4
-		je move_left_j_4
-		jmp move_left_end
-
-	move_left_j_1:
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-		
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		; j-piece 1st position has no third row so there's no point in checking it
-
-		sub [x_coordinate], ax ; return to cursor's position
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blackjpiece_1 ; erase piece
-		sub [x_coordinate], ax
-		call drawjpiece_1 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_j_2:
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-		
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		add [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blackjpiece_2 ; erase piece
-		sub [x_coordinate], ax
-		call drawjpiece_2 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_j_3:
-		; j-piece 1st position has no first row so there's no point in checking it
-
-		add [y_coordinate], ax
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-		
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax ; return to cursor position
-		add [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blackjpiece_3 ; erase piece
-		sub [x_coordinate], ax
-		call drawjpiece_3 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_j_4:
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-		
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-		
-		call blackjpiece_4 ; erase piece
-		sub [x_coordinate], ax
-		call drawjpiece_4 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_t:
-		cmp [current_piece_rotation], 1 ; different actions based on rotation
-		je move_left_t_1
-		cmp [current_piece_rotation], 2
-		je move_left_t_2
-		cmp [current_piece_rotation], 3
-		je move_left_t_3
-		cmp [current_piece_rotation], 4
-		je move_left_t_4
-		jmp move_left_end
-
-	move_left_t_1:
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		; t-piece 1st position has no first row so there's no point in checking it
-
-		sub [y_coordinate], ax ; return to cursor position
-		add [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacktpiece_1 ; erase piece
-		sub [x_coordinate], ax
-		call drawtpiece_1 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_t_2:
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-		add [x_coordinate], ax
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacktpiece_2 ; erase piece
-		sub [x_coordinate], ax
-		call drawtpiece_2 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-
-		jmp move_left_end
-
-	move_left_t_3:
-		; t-piece 3rd position has no first row so there's no point in checking it
-
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-		add [x_coordinate], ax
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacktpiece_3 ; erase piece
-		sub [x_coordinate], ax
-		call drawtpiece_3 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-
-		jmp move_left_end
-
-	move_left_t_4:
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
-		jne move_left_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
-		jne move_left_end
-		
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacktpiece_4 ; erase piece
-		sub [x_coordinate], ax
-		call drawtpiece_4 ; redraw it one square left
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_left_end
-
-	move_left_end:
-		pop [x_coordinate]
-		pop [y_coordinate]
-		pop ax
-		ret
-endp move_left
-
-proc move_right
-		push ax
-		push [y_coordinate]
-		push [x_coordinate]
-		
-		mov ax, [square_size] ; square size in a register
-
-		cmp [current_piece], 0
-		je move_right_t ; t-piece
-		cmp [current_piece], 1
-		je move_right_o ; o-piece
-		cmp [current_piece], 2
-		je move_right_j ; j-piece
-		cmp [current_piece], 3
-		je move_right_l ; l-piece
-		cmp [current_piece], 4
-		je move_right_i ; i-piece
-		cmp [current_piece], 5
-		je move_right_s ; s-piece
-		cmp [current_piece], 6
-		je move_right_z ; z-piece
-		jmp move_right_end
-
-	move_right_o:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackopiece ; erase piece
-		add [x_coordinate], ax
-		call drawopiece ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-		move_right_z:
-		cmp [current_piece_rotation], 1
-		je move_right_z_1
-		cmp [current_piece_rotation], 2
-		je move_right_z_2
-		cmp [current_piece_rotation], 3
-		je move_right_z_3
-		cmp [current_piece_rotation], 4
-		je move_right_z_4
-		jmp move_right_end
-
-	move_right_z_1:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackzPiece_1 ; erase piece
-		add [x_coordinate], ax
-		call drawzPiece_1 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_z_2:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackzPiece_2 ; erase piece
-		add [x_coordinate], ax
-		call drawzPiece_2 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_z_3:
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackzPiece_1 ; erase piece
-		add [x_coordinate], ax
-		call drawzPiece_1 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		sub [y_coordinate], ax
-		jmp move_right_end
-
-	move_right_z_4:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		add [x_coordinate], ax
-		call blackzPiece_2 ; erase piece
-		add [x_coordinate], ax
-		call drawzPiece_2 ; redraw it one square right
-		sub [x_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_s:
-		cmp [current_piece_rotation], 1
-		je move_right_s_1
-		cmp [current_piece_rotation], 2
-		je move_right_s_2
-		cmp [current_piece_rotation], 3
-		je move_right_s_3
-		cmp [current_piece_rotation], 4
-		je move_right_s_4
-		jmp move_right_end
-
-	move_right_s_1:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackSPiece_1 ; erase piece
-		add [x_coordinate], ax
-		call drawSPiece_1 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_s_2:
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackSPiece_2 ; erase piece
-		add [x_coordinate], ax
-		call drawSPiece_2 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_s_3:
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		sub [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		add [y_coordinate], ax
-		call blackSPiece_1 ; erase piece
-		add [x_coordinate], ax
-		call drawSPiece_1 ; redraw it one square right
-		sub [y_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_s_4:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		add [x_coordinate], ax
-		call blackSPiece_2 ; erase piece
-		add [x_coordinate], ax
-		call drawSPiece_2 ; redraw it one square right
-		sub [x_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_i:
-		cmp [current_piece_rotation], 1
-		je move_right_i_1
-		cmp [current_piece_rotation], 2
-		je move_right_i_2
-		cmp [current_piece_rotation], 3
-		je move_right_i_3
-		cmp [current_piece_rotation], 4
-		je move_right_i_4
-		jmp move_right_end
-
-	move_right_i_1:
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackipiece_1 ; erase piece
-		add [x_coordinate], ax
-		call drawipiece_1 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_i_2:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-		
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 4
-		jne move_right_end
-
-		sub [x_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [y_coordinate], ax
-		sub [y_coordinate], ax
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackipiece_2 ; erase piece
-		add [x_coordinate], ax
-		call drawipiece_2 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_i_3:
-		add [y_coordinate], ax
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		add [y_coordinate], ax
-		call blackipiece_1 ; erase piece
-		add [x_coordinate], ax
-		call drawipiece_1 ; redraw it one square right
-		sub [y_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_i_4:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-		
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 4
-		jne move_right_end
-
-		sub [x_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [y_coordinate], ax
-		sub [y_coordinate], ax
-		sub [y_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		add [x_coordinate], ax
-		call blackipiece_2 ; erase piece
-		add [x_coordinate], ax
-		call drawipiece_2 ; redraw it one square right
-		sub [x_coordinate], ax
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_l:
-		cmp [current_piece_rotation], 1
-		je move_right_l_1
-		cmp [current_piece_rotation], 2
-		je move_right_l_2
-		cmp [current_piece_rotation], 3
-		je move_right_l_3
-		cmp [current_piece_rotation], 4
-		je move_right_l_4
-		jmp move_right_end
-
-	move_right_l_1:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		; l-piece 1st position has no first row so there's no point in checking it
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacklpiece_1 ; erase piece
-		add [x_coordinate], ax
-		call drawlpiece_1 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_l_2:
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacklpiece_2 ; erase piece
-		add [x_coordinate], ax
-		call drawlpiece_2 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_l_3:
-		; l-piece 3rd position has no first row so there's no point in checking it
-
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacklpiece_3 ; erase piece
-		add [x_coordinate], ax
-		call drawlpiece_3 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_l_4:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacklpiece_4 ; erase piece
-		add [x_coordinate], ax
-		call drawlpiece_4 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_j:
-		cmp [current_piece_rotation], 1
-		je move_right_j_1
-		cmp [current_piece_rotation], 2
-		je move_right_j_2
-		cmp [current_piece_rotation], 3
-		je move_right_j_3
-		cmp [current_piece_rotation], 4
-		je move_right_j_4
-		jmp move_right_end
-
-	move_right_j_1:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		; j-piece 1st position has no first row so there's no point in checking it
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackjpiece_1 ; erase piece
-		add [x_coordinate], ax
-		call drawjpiece_1 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_j_2:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackjpiece_2 ; erase piece
-		add [x_coordinate], ax
-		call drawjpiece_2 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_j_3:
-		; j-piece 3rd position doesn't have a first row so there's no point in checking it
-
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackjpiece_3 ; erase piece
-		add [x_coordinate], ax
-		call drawjpiece_3 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_j_4:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blackjpiece_4 ; erase piece
-		add [x_coordinate], ax
-		call drawjpiece_4 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_t:
-		cmp [current_piece_rotation], 1
-		je move_right_t_1
-		cmp [current_piece_rotation], 2
-		je move_right_t_2
-		cmp [current_piece_rotation], 3
-		je move_right_t_3
-		cmp [current_piece_rotation], 4
-		je move_right_t_4
-		jmp move_right_end
-
-	move_right_t_1:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		; t-piece 1st position has no first row so there's no point in checking it
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacktpiece_1 ; erase piece
-		add [x_coordinate], ax
-		call drawtpiece_1 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_t_2:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacktpiece_2 ; erase piece
-		add [x_coordinate], ax
-		call drawtpiece_2 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-
-		jmp move_right_end
-
-	move_right_t_3:
-		; t-piece 3rd position has no first row so there's no point in checking it
-
-		add [y_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-		sub [x_coordinate], ax
-
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacktpiece_3 ; erase piece
-		add [x_coordinate], ax
-		call drawtpiece_3 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-
-		jmp move_right_end
-
-	move_right_t_4:
-		add [x_coordinate], ax
-		add [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
-		jne move_right_end
-
-		add [x_coordinate], ax
-		add [y_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
-		jne move_right_end
-
-		add [y_coordinate], ax
-		sub [x_coordinate], ax
-		call readpixel
-		cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
-		jne move_right_end
-		
-		sub [y_coordinate], ax ; return to cursor position
-		sub [y_coordinate], ax
-		sub [x_coordinate], ax
-		sub [x_coordinate], ax
-
-		pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
-
-		call blacktpiece_4 ; erase piece
-		add [x_coordinate], ax
-		call drawtpiece_4 ; redraw it one square right
-
-		push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
-		jmp move_right_end
-
-	move_right_end:
-		pop [x_coordinate]
-		pop [y_coordinate]
-		pop ax
-		ret
-endp move_right
+	proc move_left
+			push ax
+			push [y_coordinate]
+			push [x_coordinate]
+			
+			mov ax, [square_size] ; square size in a register
+
+			cmp [current_piece], 0
+			je move_left_t ; if t-piece
+			cmp [current_piece], 1
+			je move_left_o ; if o-piece
+			cmp [current_piece], 2
+			je move_left_j ; if j-piece
+			cmp [current_piece], 3
+			je move_left_l ; if l-piece
+			cmp [current_piece], 4
+			je move_left_i ; if i-piece
+			cmp [current_piece], 5
+			je move_left_s ; if s-piece
+			cmp [current_piece], 6
+			je move_left_z ; if z-piece
+			jmp move_left_end
+
+		move_left_o:
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor position
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackopiece ; erase piece
+			sub [x_coordinate], ax
+			call drawopiece ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_z:
+			cmp [current_piece_rotation], 1 ; different actions based on rotation
+			je move_left_z_1
+			cmp [current_piece_rotation], 2
+			je move_left_z_2
+			cmp [current_piece_rotation], 3
+			je move_left_z_3
+			cmp [current_piece_rotation], 4
+			je move_left_z_4
+			jmp move_left_end
+
+		move_left_z_1:
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			add [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			sub [x_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blackZPiece_1 ; erase piece
+			sub [x_coordinate], ax
+			call drawZPiece_1 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_z_2:
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			add [x_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blackZPiece_2 ; erase piece
+			sub [x_coordinate], ax
+			call drawZPiece_2 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_z_3:
+			add [y_coordinate], ax
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			sub [x_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			add [y_coordinate], ax
+			call blackZPiece_1 ; erase piece
+			sub [x_coordinate], ax
+			call drawZPiece_1 ; redraw it one square left
+			sub [y_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_z_4:
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			add [x_coordinate], ax
+			call blackZPiece_2 ; erase piece
+			sub [x_coordinate], ax
+			call drawZPiece_2 ; redraw it one square left
+			sub [x_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_s:
+			cmp [current_piece_rotation], 1 ; different actions based on rotation
+			je move_left_s_1
+			cmp [current_piece_rotation], 2
+			je move_left_s_2
+			cmp [current_piece_rotation], 3
+			je move_left_s_3
+			cmp [current_piece_rotation], 4
+			je move_left_s_4
+			jmp move_left_end
+
+		move_left_s_1:
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [x_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blackSPiece_1 ; erase piece
+			sub [x_coordinate], ax
+			call drawSPiece_1 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_s_2:
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blackSPiece_2 ; erase piece
+			sub [x_coordinate], ax
+			call drawSPiece_2 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_s_3:
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+			add [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			add [y_coordinate], ax
+			call blackSPiece_1 ; erase piece
+			sub [x_coordinate], ax
+			call drawSPiece_1 ; redraw it one square left
+			sub [y_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_s_4:
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			add [x_coordinate], ax
+			call blackSPiece_2 ; erase piece
+			sub [x_coordinate], ax
+			call drawSPiece_2 ; redraw it one square left
+			sub [x_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_i:
+			cmp [current_piece_rotation], 1 ; different actions based on rotation
+			je move_left_i_1
+			cmp [current_piece_rotation], 2
+			je move_left_i_2
+			cmp [current_piece_rotation], 3
+			je move_left_i_3
+			cmp [current_piece_rotation], 4
+			je move_left_i_4
+			jmp move_left_end
+
+		move_left_i_1:
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [x_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blackipiece_1 ; erase piece
+			sub [x_coordinate], ax
+			call drawipiece_1 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_i_2:
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+			
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 4
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blackipiece_2 ; erase piece
+			sub [x_coordinate], ax
+			call drawipiece_2 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_i_3:
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [x_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			add [y_coordinate], ax
+			call blackipiece_1 ; erase piece
+			sub [x_coordinate], ax
+			call drawipiece_1 ; redraw it one square left
+			sub [y_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_i_4:
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+			
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 4
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			add [x_coordinate], ax
+			call blackipiece_2 ; erase piece
+			sub [x_coordinate], ax
+			call drawipiece_2 ; redraw it one square left
+			sub [x_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_l:
+			cmp [current_piece_rotation], 1 ; different actions based on rotation
+			je move_left_l_1
+			cmp [current_piece_rotation], 2
+			je move_left_l_2
+			cmp [current_piece_rotation], 3
+			je move_left_l_3
+			cmp [current_piece_rotation], 4
+			je move_left_l_4
+			jmp move_left_end
+
+		move_left_l_1:
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+			
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			; l-piece 1st position has no third row so there's no point in checking it
+
+			sub [y_coordinate], ax ; return to cursor's position
+			add [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blacklpiece_1 ; erase piece
+			sub [x_coordinate], ax
+			call drawlpiece_1 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_l_2:
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+			
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+			add [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blacklpiece_2 ; erase piece
+			sub [x_coordinate], ax
+			call drawlpiece_2 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_l_3:
+			; l-piece 1st position has no first row so there's no point in checking it
+			
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+			add [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blacklpiece_3 ; erase piece
+			sub [x_coordinate], ax
+			call drawlpiece_3 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_l_4:
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blacklpiece_4 ; erase piece
+			sub [x_coordinate], ax
+			call drawlpiece_4 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_j:
+			cmp [current_piece_rotation], 1 ; different actions based on rotation
+			je move_left_j_1
+			cmp [current_piece_rotation], 2
+			je move_left_j_2
+			cmp [current_piece_rotation], 3
+			je move_left_j_3
+			cmp [current_piece_rotation], 4
+			je move_left_j_4
+			jmp move_left_end
+
+		move_left_j_1:
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+			
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			; j-piece 1st position has no third row so there's no point in checking it
+
+			sub [x_coordinate], ax ; return to cursor's position
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blackjpiece_1 ; erase piece
+			sub [x_coordinate], ax
+			call drawjpiece_1 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_j_2:
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+			
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			add [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blackjpiece_2 ; erase piece
+			sub [x_coordinate], ax
+			call drawjpiece_2 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_j_3:
+			; j-piece 1st position has no first row so there's no point in checking it
+
+			add [y_coordinate], ax
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+			
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax ; return to cursor position
+			add [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blackjpiece_3 ; erase piece
+			sub [x_coordinate], ax
+			call drawjpiece_3 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_j_4:
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+			
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+			
+			call blackjpiece_4 ; erase piece
+			sub [x_coordinate], ax
+			call drawjpiece_4 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_t:
+			cmp [current_piece_rotation], 1 ; different actions based on rotation
+			je move_left_t_1
+			cmp [current_piece_rotation], 2
+			je move_left_t_2
+			cmp [current_piece_rotation], 3
+			je move_left_t_3
+			cmp [current_piece_rotation], 4
+			je move_left_t_4
+			jmp move_left_end
+
+		move_left_t_1:
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			; t-piece 1st position has no first row so there's no point in checking it
+
+			sub [y_coordinate], ax ; return to cursor position
+			add [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacktpiece_1 ; erase piece
+			sub [x_coordinate], ax
+			call drawtpiece_1 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_t_2:
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+			add [x_coordinate], ax
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacktpiece_2 ; erase piece
+			sub [x_coordinate], ax
+			call drawtpiece_2 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+
+			jmp move_left_end
+
+		move_left_t_3:
+			; t-piece 3rd position has no first row so there's no point in checking it
+
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+			add [x_coordinate], ax
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacktpiece_3 ; erase piece
+			sub [x_coordinate], ax
+			call drawtpiece_3 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+
+			jmp move_left_end
+
+		move_left_t_4:
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 1
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 2
+			jne move_left_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move left if it's blocked - row 3
+			jne move_left_end
+			
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacktpiece_4 ; erase piece
+			sub [x_coordinate], ax
+			call drawtpiece_4 ; redraw it one square left
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_left_end
+
+		move_left_end:
+			pop [x_coordinate]
+			pop [y_coordinate]
+			pop ax
+			ret
+	endp move_left
+
+	proc move_right
+			push ax
+			push [y_coordinate]
+			push [x_coordinate]
+			
+			mov ax, [square_size] ; square size in a register
+
+			cmp [current_piece], 0
+			je move_right_t ; t-piece
+			cmp [current_piece], 1
+			je move_right_o ; o-piece
+			cmp [current_piece], 2
+			je move_right_j ; j-piece
+			cmp [current_piece], 3
+			je move_right_l ; l-piece
+			cmp [current_piece], 4
+			je move_right_i ; i-piece
+			cmp [current_piece], 5
+			je move_right_s ; s-piece
+			cmp [current_piece], 6
+			je move_right_z ; z-piece
+			jmp move_right_end
+
+		move_right_o:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackopiece ; erase piece
+			add [x_coordinate], ax
+			call drawopiece ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+			move_right_z:
+			cmp [current_piece_rotation], 1
+			je move_right_z_1
+			cmp [current_piece_rotation], 2
+			je move_right_z_2
+			cmp [current_piece_rotation], 3
+			je move_right_z_3
+			cmp [current_piece_rotation], 4
+			je move_right_z_4
+			jmp move_right_end
+
+		move_right_z_1:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackzPiece_1 ; erase piece
+			add [x_coordinate], ax
+			call drawzPiece_1 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_z_2:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackzPiece_2 ; erase piece
+			add [x_coordinate], ax
+			call drawzPiece_2 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_z_3:
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackzPiece_1 ; erase piece
+			add [x_coordinate], ax
+			call drawzPiece_1 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			sub [y_coordinate], ax
+			jmp move_right_end
+
+		move_right_z_4:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			add [x_coordinate], ax
+			call blackzPiece_2 ; erase piece
+			add [x_coordinate], ax
+			call drawzPiece_2 ; redraw it one square right
+			sub [x_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_s:
+			cmp [current_piece_rotation], 1
+			je move_right_s_1
+			cmp [current_piece_rotation], 2
+			je move_right_s_2
+			cmp [current_piece_rotation], 3
+			je move_right_s_3
+			cmp [current_piece_rotation], 4
+			je move_right_s_4
+			jmp move_right_end
+
+		move_right_s_1:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackSPiece_1 ; erase piece
+			add [x_coordinate], ax
+			call drawSPiece_1 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_s_2:
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackSPiece_2 ; erase piece
+			add [x_coordinate], ax
+			call drawSPiece_2 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_s_3:
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			sub [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			add [y_coordinate], ax
+			call blackSPiece_1 ; erase piece
+			add [x_coordinate], ax
+			call drawSPiece_1 ; redraw it one square right
+			sub [y_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_s_4:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			add [x_coordinate], ax
+			call blackSPiece_2 ; erase piece
+			add [x_coordinate], ax
+			call drawSPiece_2 ; redraw it one square right
+			sub [x_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_i:
+			cmp [current_piece_rotation], 1
+			je move_right_i_1
+			cmp [current_piece_rotation], 2
+			je move_right_i_2
+			cmp [current_piece_rotation], 3
+			je move_right_i_3
+			cmp [current_piece_rotation], 4
+			je move_right_i_4
+			jmp move_right_end
+
+		move_right_i_1:
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackipiece_1 ; erase piece
+			add [x_coordinate], ax
+			call drawipiece_1 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_i_2:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+			
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 4
+			jne move_right_end
+
+			sub [x_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [y_coordinate], ax
+			sub [y_coordinate], ax
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackipiece_2 ; erase piece
+			add [x_coordinate], ax
+			call drawipiece_2 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_i_3:
+			add [y_coordinate], ax
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			add [y_coordinate], ax
+			call blackipiece_1 ; erase piece
+			add [x_coordinate], ax
+			call drawipiece_1 ; redraw it one square right
+			sub [y_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_i_4:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+			
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 4
+			jne move_right_end
+
+			sub [x_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [y_coordinate], ax
+			sub [y_coordinate], ax
+			sub [y_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			add [x_coordinate], ax
+			call blackipiece_2 ; erase piece
+			add [x_coordinate], ax
+			call drawipiece_2 ; redraw it one square right
+			sub [x_coordinate], ax
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_l:
+			cmp [current_piece_rotation], 1
+			je move_right_l_1
+			cmp [current_piece_rotation], 2
+			je move_right_l_2
+			cmp [current_piece_rotation], 3
+			je move_right_l_3
+			cmp [current_piece_rotation], 4
+			je move_right_l_4
+			jmp move_right_end
+
+		move_right_l_1:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			; l-piece 1st position has no first row so there's no point in checking it
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacklpiece_1 ; erase piece
+			add [x_coordinate], ax
+			call drawlpiece_1 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_l_2:
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacklpiece_2 ; erase piece
+			add [x_coordinate], ax
+			call drawlpiece_2 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_l_3:
+			; l-piece 3rd position has no first row so there's no point in checking it
+
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacklpiece_3 ; erase piece
+			add [x_coordinate], ax
+			call drawlpiece_3 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_l_4:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacklpiece_4 ; erase piece
+			add [x_coordinate], ax
+			call drawlpiece_4 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_j:
+			cmp [current_piece_rotation], 1
+			je move_right_j_1
+			cmp [current_piece_rotation], 2
+			je move_right_j_2
+			cmp [current_piece_rotation], 3
+			je move_right_j_3
+			cmp [current_piece_rotation], 4
+			je move_right_j_4
+			jmp move_right_end
+
+		move_right_j_1:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			; j-piece 1st position has no first row so there's no point in checking it
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackjpiece_1 ; erase piece
+			add [x_coordinate], ax
+			call drawjpiece_1 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_j_2:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackjpiece_2 ; erase piece
+			add [x_coordinate], ax
+			call drawjpiece_2 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_j_3:
+			; j-piece 3rd position doesn't have a first row so there's no point in checking it
+
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackjpiece_3 ; erase piece
+			add [x_coordinate], ax
+			call drawjpiece_3 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_j_4:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blackjpiece_4 ; erase piece
+			add [x_coordinate], ax
+			call drawjpiece_4 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_t:
+			cmp [current_piece_rotation], 1
+			je move_right_t_1
+			cmp [current_piece_rotation], 2
+			je move_right_t_2
+			cmp [current_piece_rotation], 3
+			je move_right_t_3
+			cmp [current_piece_rotation], 4
+			je move_right_t_4
+			jmp move_right_end
+
+		move_right_t_1:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			; t-piece 1st position has no first row so there's no point in checking it
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacktpiece_1 ; erase piece
+			add [x_coordinate], ax
+			call drawtpiece_1 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_t_2:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacktpiece_2 ; erase piece
+			add [x_coordinate], ax
+			call drawtpiece_2 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+
+			jmp move_right_end
+
+		move_right_t_3:
+			; t-piece 3rd position has no first row so there's no point in checking it
+
+			add [y_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+			sub [x_coordinate], ax
+
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacktpiece_3 ; erase piece
+			add [x_coordinate], ax
+			call drawtpiece_3 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+
+			jmp move_right_end
+
+		move_right_t_4:
+			add [x_coordinate], ax
+			add [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 1
+			jne move_right_end
+
+			add [x_coordinate], ax
+			add [y_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 2
+			jne move_right_end
+
+			add [y_coordinate], ax
+			sub [x_coordinate], ax
+			call readpixel
+			cmp [pixelcolour], 0 ; don't move right if it's blocked - row 3
+			jne move_right_end
+			
+			sub [y_coordinate], ax ; return to cursor position
+			sub [y_coordinate], ax
+			sub [x_coordinate], ax
+			sub [x_coordinate], ax
+
+			pop [x_coordinate] ; momenteraly pop x_coordinate in order to permenantly change it
+
+			call blacktpiece_4 ; erase piece
+			add [x_coordinate], ax
+			call drawtpiece_4 ; redraw it one square right
+
+			push [x_coordinate] ; push x_coordinate back before jumping to the end to not mess up the pop at the end
+			jmp move_right_end
+
+		move_right_end:
+			pop [x_coordinate]
+			pop [y_coordinate]
+			pop ax
+			ret
+	endp move_right
 
 proc move_down
 		push ax
@@ -6312,8 +6253,16 @@ proc calculate_level
 	jb level_19
 	cmp [lines_cleared], 500
 	jb level_20
+	cmp [lines_cleared], 600
+	jb level_21
+	cmp [lines_cleared], 700
+	jb level_22
+	cmp [lines_cleared], 800
+	jb level_23
+	cmp [lines_cleared], 950
+	jb level_24
 
-	jmp level_21
+	jmp level_25
 	
 
 	level_0:
@@ -6322,7 +6271,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 0
 		mov [bx+0], al
-		mov [default_speed], 0ffffh
+		mov [default_speed], 7FFFh
 		popa
 		ret
 	level_1:
@@ -6331,7 +6280,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 0
 		mov [bx+0], al
-		mov [default_speed], 0e000h
+		mov [default_speed], 7000h
 		popa
 		ret
 	level_2:
@@ -6340,7 +6289,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 0
 		mov [bx+0], al
-		mov [default_speed], 0d000h
+		mov [default_speed], 6800h
 		popa
 		ret
 	level_3:
@@ -6349,7 +6298,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 0
 		mov [bx+0], al
-		mov [default_speed], 0c000h
+		mov [default_speed], 6000h
 		popa
 		ret
 	level_4:
@@ -6358,7 +6307,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 0
 		mov [bx+0], al
-		mov [default_speed], 0b000h
+		mov [default_speed], 5800h
 		popa
 		ret
 	level_5:
@@ -6367,7 +6316,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 0
 		mov [bx+0], al
-		mov [default_speed], 0afffh
+		mov [default_speed], 4800h
 		popa
 		ret
 	level_6:
@@ -6376,7 +6325,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 0
 		mov [bx+0], al
-		mov [default_speed], 09800h
+		mov [default_speed], 4000h
 		popa
 		ret
 	level_7:
@@ -6385,7 +6334,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 0
 		mov [bx+0], al
-		mov [default_speed], 09000h
+		mov [default_speed], 3800h
 		popa
 		ret
 	level_8:
@@ -6394,7 +6343,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 0
 		mov [bx+0], al
-		mov [default_speed], 08800h
+		mov [default_speed], 3000h
 		popa
 		ret
 	level_9:
@@ -6403,7 +6352,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 0
 		mov [bx+0], al
-		mov [default_speed], 08000h
+		mov [default_speed], 2800h
 		popa
 		ret
 	level_10:
@@ -6412,7 +6361,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 1
 		mov [bx+0], al
-		mov [default_speed], 07800h
+		mov [default_speed], 2000h
 		popa
 		ret
 	level_11:
@@ -6421,7 +6370,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 1
 		mov [bx+0], al
-		mov [default_speed], 07000h
+		mov [default_speed], 1A00h
 		popa
 		ret
 	level_12:
@@ -6430,7 +6379,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 1
 		mov [bx+0], al
-		mov [default_speed], 06000h
+		mov [default_speed], 1400h
 		popa
 		ret
 	level_13:
@@ -6439,7 +6388,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 1
 		mov [bx+0], al
-		mov [default_speed], 05000h
+		mov [default_speed], 1000h
 		popa
 		ret
 	level_14:
@@ -6448,7 +6397,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 1
 		mov [bx+0], al
-		mov [default_speed], 04000h
+		mov [default_speed], 0b00h
 		popa
 		ret
 	level_15:
@@ -6457,7 +6406,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 1
 		mov [bx+0], al
-		mov [default_speed], 03000h
+		mov [default_speed], 800h
 		popa
 		ret
 	level_16:
@@ -6466,7 +6415,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 1
 		mov [bx+0], al
-		mov [default_speed], 02000h
+		mov [default_speed], 600h
 		popa
 		ret
 	level_17:
@@ -6475,7 +6424,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 1
 		mov [bx+0], al
-		mov [default_speed], 01000h
+		mov [default_speed], 500h
 		popa
 		ret
 	level_18:
@@ -6484,7 +6433,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 1
 		mov [bx+0], al
-		mov [default_speed], 800h
+		mov [default_speed], 400h
 		popa
 		ret
 	level_19:
@@ -6493,7 +6442,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 1
 		mov [bx+0], al
-		mov [default_speed], 750h
+		mov [default_speed], 375h
 		popa
 		ret
 	level_20:
@@ -6502,7 +6451,7 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 2
 		mov [bx+0], al
-		mov [default_speed], 400h
+		mov [default_speed], 200h
 		popa
 		ret
 	level_21:
@@ -6511,7 +6460,40 @@ proc calculate_level
 		mov [bx+1], al
 		mov al, 2
 		mov [bx+0], al
-		mov [default_speed], 200h
+		mov [default_speed], 100h
+		popa
+		ret
+	level_22:
+		mov [level_num], 22
+		mov al, 2
+		mov [bx+1], al
+		mov al, 2
+		mov [bx+0], al
+		mov [default_speed], 50h
+		popa
+	level_23:
+		mov [level_num], 23
+		mov al, 3
+		mov [bx+1], al
+		mov al, 2
+		mov [bx+0], al
+		mov [default_speed], 10h
+		popa
+	level_24:
+		mov [level_num], 24
+		mov al, 4
+		mov [bx+1], al
+		mov al, 2
+		mov [bx+0], al
+		mov [default_speed], 1h
+		popa
+	level_25:
+		mov [level_num], 25
+		mov al, 5
+		mov [bx+1], al
+		mov al, 2
+		mov [bx+0], al
+		mov [default_speed], 0h
 		popa
 		ret
 endp calculate_level
@@ -6572,11 +6554,7 @@ mov ds, ax
 
 	mov cx, offset filename2 ; print screen
 	mov [filename], cx
-    call OpenFile
-    call ReadHeader
-    call ReadPalette
-    call CopyPal
-    call CopyBitmap
+    call OPENBITMAP
 	
 	call waitforkeypress
 
@@ -6600,42 +6578,38 @@ mov ds, ax
 	je level_9_start
 	jmp game_start
 
-	level_1_start:
-		mov [lines_cleared], 5
-		jmp game_start
-	level_2_start:
-		mov [lines_cleared], 10
-		jmp game_start
-	level_3_start:
-		mov [lines_cleared], 15
-		jmp game_start
-	level_4_start:
-		mov [lines_cleared], 20
-		jmp game_start
-	level_5_start:
-		mov [lines_cleared], 30
-		jmp game_start
-	level_6_start:
-		mov [lines_cleared], 40
-		jmp game_start
-	level_7_start:
-		mov [lines_cleared], 50
-		jmp game_start
-	level_8_start:
-		mov [lines_cleared], 60
-		jmp game_start
-	level_9_start:
-		mov [lines_cleared], 70
-		jmp game_start
+		level_1_start:
+			mov [lines_cleared], 5
+			jmp game_start
+		level_2_start:
+			mov [lines_cleared], 10
+			jmp game_start
+		level_3_start:
+			mov [lines_cleared], 15
+			jmp game_start
+		level_4_start:
+			mov [lines_cleared], 20
+			jmp game_start
+		level_5_start:
+			mov [lines_cleared], 30
+			jmp game_start
+		level_6_start:
+			mov [lines_cleared], 40
+			jmp game_start
+		level_7_start:
+			mov [lines_cleared], 50
+			jmp game_start
+		level_8_start:
+			mov [lines_cleared], 60
+			jmp game_start
+		level_9_start:
+			mov [lines_cleared], 70
+			jmp game_start
 
 game_start:
-
-    call entergraphicmode
-
 	call initializerandom
 
 	; initialize queue
-
 	call generate_last_7_queue
 
 	mov bx, offset queue
@@ -6660,15 +6634,11 @@ game_start:
 	mov [queue_iteration], 0
 
 	; Process BMP file
-
+    call entergraphicmode
 	mov cx, offset filename1 
 	mov [filename], cx
 
-    call OpenFile
-    call ReadHeader
-    call ReadPalette
-    call CopyPal
-    call CopyBitmap
+    call openbitmap
 
 	push 3 ;x coordinate
 	push 15 ;y coordinate
@@ -6706,117 +6676,117 @@ mainGameLoop:
 			je finished_clearing_row_mechanism ; if a square is empty, finish without clearing the row and move on to the next one
 			add [x_coordinate], ax
 			loop check_row_for_full
-			; reaches here only if the whole row isn't empty
-			mov [x_coordinate], 120 ; reset x coord
-			mov [main_colour], 0 ; black
-			mov [light_colour], 0
-			mov [border_colour], 0
-			mov cx, 10 ; for 10 squares
-			empty_row_columns:
-				call drawsquare ; clear the square
-				add [x_coordinate], ax
-				loop empty_row_columns
-			pop [line] ; get the line number to line from the stack
-			push [line]
-			mov [x_coordinate], 120 ; reset x coord
-			call move_down_lines
-			inc [lines_cleared_this_turn]
-			inc [lines_cleared]
-			call inc_cleared_lines
-		finished_clearing_row_mechanism:
-			mov [x_coordinate], 120 ; reset x coord
-			add [y_coordinate], ax ; next row
-			pop cx
+		; reaches here only if the whole row isn't empty
+		mov [x_coordinate], 120 ; reset x coord
+		mov [main_colour], 0 ; black
+		mov [light_colour], 0
+		mov [border_colour], 0
+		mov cx, 10 ; for 10 squares
+		empty_row_columns:
+			call drawsquare ; clear the square
+			add [x_coordinate], ax
+			loop empty_row_columns
+		pop [line] ; get the line number to line from the stack
+		push [line]
+		mov [x_coordinate], 120 ; reset x coord
+		call move_down_lines
+		inc [lines_cleared_this_turn]
+		inc [lines_cleared]
+		call inc_cleared_lines
+	finished_clearing_row_mechanism:
+		mov [x_coordinate], 120 ; reset x coord
+		add [y_coordinate], ax ; next row
+		pop cx
 		loop clearing_row_mechanism
 
-		push 10 ;x coordinate
-		push 17 ;y coordinate
+	push 10 ;x coordinate
+	push 17 ;y coordinate
+	call cursor_location
+	call draw_cleared_lines
+
+	call calculate_level
+
+	push 11 ;x coordinate
+	push 13 ;y coordinate
+	call cursor_location
+	call draw_level
+
+	; clearing lines-based score mechanism:
+	cmp [lines_cleared_this_turn], 1
+	je cleared_1_rows
+	cmp [lines_cleared_this_turn], 2
+	je cleared_2_rows
+	cmp [lines_cleared_this_turn], 3
+	je cleared_3_rows
+	cmp [lines_cleared_this_turn], 4
+	je cleared_4_rows
+	jmp next_piece ; if didn't clear (or bugged)
+
+	cleared_1_rows:
+		mov ax, 4
+		mov cl, [level_num]
+		mov ch, 0
+		inc cx
+		mul cx
+		mov cx, ax
+		cleared_1_rows_score_loop:
+			call inc_score_second_digit
+			loop cleared_1_rows_score_loop
+
+		push 3 ;x coordinate
+		push 15 ;y coordinate
 		call cursor_location
-		call draw_cleared_lines
+		call draw_score
+		jmp next_piece
 
-		call calculate_level
+	cleared_2_rows:
+		mov ax, 1
+		mov cl, [level_num]
+		mov ch, 0
+		inc cx
+		mul cx
+		mov cx, ax
+		cleared_2_rows_score_loop:
+			call inc_score_third_digit
+			loop cleared_2_rows_score_loop
 
-		push 11 ;x coordinate
-		push 13 ;y coordinate
+		push 3 ;x coordinate
+		push 15 ;y coordinate
 		call cursor_location
-		call draw_level
+		call draw_score
+		jmp next_piece
+	cleared_3_rows:
+		mov ax, 3
+		mov cl, [level_num]
+		mov ch, 0
+		inc cx
+		mul cx
+		mov cx, ax
+		cleared_3_rows_score_loop:
+			call inc_score_third_digit
+			loop cleared_3_rows_score_loop
 
-		; clearing lines-based score mechanism:
-		cmp [lines_cleared_this_turn], 1
-		je cleared_1_rows
-		cmp [lines_cleared_this_turn], 2
-		je cleared_2_rows
-		cmp [lines_cleared_this_turn], 3
-		je cleared_3_rows
-		cmp [lines_cleared_this_turn], 4
-		je cleared_4_rows
-		jmp next_piece ; if didn't clear (or bugged)
+		push 3 ;x coordinate
+		push 15 ;y coordinate
+		call cursor_location
+		call draw_score
+		jmp next_piece
+	cleared_4_rows:
+		mov ax, 12
+		mov cl, [level_num]
+		mov ch, 0
+		inc cx
+		mul cx
+		mov cx, ax
+		cleared_4_rows_score_loop:
+			call inc_score_third_digit
+			loop cleared_4_rows_score_loop
 
-		cleared_1_rows:
-			mov ax, 4
-			mov cl, [level_num]
-			mov ch, 0
-			inc cx
-			mul cx
-			mov cx, ax
-			cleared_1_rows_score_loop:
-				call inc_score_second_digit
-				loop cleared_1_rows_score_loop
-
-			push 3 ;x coordinate
-			push 15 ;y coordinate
-			call cursor_location
-			call draw_score
-			jmp next_piece
-
-		cleared_2_rows:
-			mov ax, 1
-			mov cl, [level_num]
-			mov ch, 0
-			inc cx
-			mul cx
-			mov cx, ax
-			cleared_2_rows_score_loop:
-				call inc_score_third_digit
-				loop cleared_2_rows_score_loop
-
-			push 3 ;x coordinate
-			push 15 ;y coordinate
-			call cursor_location
-			call draw_score
-			jmp next_piece
-		cleared_3_rows:
-			mov ax, 3
-			mov cl, [level_num]
-			mov ch, 0
-			inc cx
-			mul cx
-			mov cx, ax
-			cleared_3_rows_score_loop:
-				call inc_score_third_digit
-				loop cleared_3_rows_score_loop
-
-			push 3 ;x coordinate
-			push 15 ;y coordinate
-			call cursor_location
-			call draw_score
-			jmp next_piece
-		cleared_4_rows:
-			mov ax, 12
-			mov cl, [level_num]
-			mov ch, 0
-			inc cx
-			mul cx
-			mov cx, ax
-			cleared_4_rows_score_loop:
-				call inc_score_third_digit
-				loop cleared_4_rows_score_loop
-
-			push 3 ;x coordinate
-			push 15 ;y coordinate
-			call cursor_location
-			call draw_score
-			jmp next_piece
+		push 3 ;x coordinate
+		push 15 ;y coordinate
+		call cursor_location
+		call draw_score
+		jmp next_piece
 
 	next_piece:
 			call erase_queue_thumblnails
@@ -6858,7 +6828,7 @@ mainGameLoop:
 		call generate_piece ; spawn next piece
 
 	falling_piece_loop:
-		mov cx, 20 ; loop 20 times in order to have 20 chances to move in a block-length fall
+		mov cx, 40 ; loop 40 times in order to have 40 chances to move in a block-length fall
 		check_keyboard_loop:
 			; check if thre is a charcter to read
 			cmp [up_key_pressed], 1
@@ -7004,11 +6974,7 @@ end_game:
 
 	mov cx, offset filename3 ; print screen
 	mov [filename], cx
-    call OpenFile
-    call ReadHeader
-    call ReadPalette
-    call CopyPal
-    call CopyBitmap
+    call OpenBitmap
 
 	push 15 ;x coordinate
 	push 17 ;y coordinate
