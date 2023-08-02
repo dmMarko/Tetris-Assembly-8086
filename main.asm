@@ -11,9 +11,9 @@ DATASEG
 
 ; --------- image handler ---------
 filename dw ?
-filename1 db 'pic2019.bmp',0
-filename2 db 'pic2020.bmp',0
-filename3 db 'pic2021.bmp',0
+game_layout_pic db 'game-layout.bmp',0
+main_menu_pic db 'main-menu.bmp',0
+game_over_screen db 'game-over-screen.bmp',0
 
 filehandle dw ?
 Header db 54 dup (0)
@@ -6552,7 +6552,7 @@ mov ds, ax
 ;start screen:
 	call entergraphicmode
 
-	mov cx, offset filename2 ; print screen
+	mov cx, offset main_menu_pic ; print screen
 	mov [filename], cx
     call OPENBITMAP
 	
@@ -6635,7 +6635,7 @@ game_start:
 
 	; Process BMP file
     call entergraphicmode
-	mov cx, offset filename1 
+	mov cx, offset game_layout_pic 
 	mov [filename], cx
 
     call openbitmap
@@ -6972,7 +6972,7 @@ end_game:
 
 	call entergraphicmode
 
-	mov cx, offset filename3 ; print screen
+	mov cx, offset game_over_screen ; print screen
 	mov [filename], cx
     call OpenBitmap
 
